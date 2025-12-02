@@ -48,7 +48,6 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background 0.3s;
         }
         #instructions button:hover {
             background: #45a049;
@@ -59,13 +58,11 @@
     </style>
 </head>
 <body>
-    <!-- UI表示 -->
     <div id="ui">
         <div>スコア: <span id="score">0</span></div>
         <div>距離: <span id="distance">0</span>m</div>
     </div>
 
-    <!-- スタート画面 -->
     <div id="instructions">
         <h1>🎮 3D エンドレスランナー</h1>
         <p>← → キー: 左右移動</p>
@@ -74,10 +71,11 @@
         <button id="startButton">ゲームスタート</button>
     </div>
 
-    <!-- Three.jsライブラリの読み込み -->
-    <script src="https://unpkg.com/three@0.165.0/build/three.min.js"></script>
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
     
     <!-- ゲームロジック -->
     <script src="game.js"></script>
 </body>
 </html>
+
