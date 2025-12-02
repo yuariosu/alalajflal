@@ -10,7 +10,7 @@ let score = 0;
 let distance = 0;
 let gameSpeed = 0.2;
 let obstacleSpawnTimer = 0;
-let obstacleSpawnInterval = 60; // フレーム数
+let obstacleSpawnInterval = 60;
 
 // プレイヤーの状態
 let playerVelocityY = 0;
@@ -33,17 +33,19 @@ let keys = {
 // 初期化関数
 // =========================================
 function init() {
+    console.log('Initializing game...');
+    
     // シーンの作成
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); // 空色
+    scene.background = new THREE.Color(0x87CEEB);
     scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
 
     // カメラの作成
     camera = new THREE.PerspectiveCamera(
-        75, // 視野角
-        window.innerWidth / window.innerHeight, // アスペクト比
-        0.1, // ニアクリップ
-        1000 // ファークリップ
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
     );
     camera.position.set(0, 3, 5);
     camera.lookAt(0, 0, 0);
@@ -79,6 +81,8 @@ function init() {
 
     // アニメーションループの開始
     animate();
+    
+    console.log('Game initialized successfully!');
 }
 
 // =========================================
@@ -96,7 +100,7 @@ function createGround() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // 道路のライン（装飾）
+    // 道路のライン
     const lineGeometry = new THREE.PlaneGeometry(0.2, 100);
     const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     
@@ -154,7 +158,7 @@ function createObstacle() {
     });
     const obstacle = new THREE.Mesh(geometry, material);
     
-    // ランダムなレーン配置 (-3, 0, 3)
+    // ランダムなレーン配置
     const lanes = [-3, 0, 3];
     const lane = lanes[Math.floor(Math.random() * lanes.length)];
     
@@ -174,14 +178,10 @@ function createObstacle() {
 // イベントリスナーの設定
 // =========================================
 function setupEventListeners() {
-    // キーボード入力
     document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keydown', onKeyUp);
-    
-    // ウィンドウリサイズ
+    document.addEventListener('keyup', onKeyUp);
     window.addEventListener('resize', onWindowResize);
     
-    // スタートボタン
     const startButton = document.getElementById('startButton');
     if (startButton) {
         startButton.addEventListener('click', startGame);
@@ -189,8 +189,6 @@ function setupEventListeners() {
 }
 
 function onKeyDown(event) {
-    if (!isGameRunning) return;
-    
     switch(event.code) {
         case 'ArrowLeft':
         case 'KeyA':
@@ -203,7 +201,7 @@ function onKeyDown(event) {
             event.preventDefault();
             break;
         case 'Space':
-            if (!keys.space && !isJumping) {
+            if (!keys.space && !isJumping && isGameRunning) {
                 keys.space = true;
                 jump();
             }
@@ -240,13 +238,13 @@ function onWindowResize() {
 // ゲーム開始
 // =========================================
 function startGame() {
-    // UI更新
+    console.log('Game started!');
+    
     const instructionsDiv = document.getElementById('instructions');
     if (instructionsDiv) {
         instructionsDiv.classList.add('hidden');
     }
     
-    // ゲーム状態リセット
     isGameRunning = true;
     isGameOver = false;
     score = 0;
@@ -254,7 +252,6 @@ function startGame() {
     gameSpeed = 0.2;
     obstacleSpawnTimer = 0;
     
-    // プレイヤーリセット
     if (player) {
         player.position.set(0, PLAYER_START_Y, 2);
     }
@@ -262,7 +259,6 @@ function startGame() {
     playerVelocityX = 0;
     isJumping = false;
     
-    // 障害物クリア
     obstacles.forEach(obstacle => {
         if (obstacle && obstacle.parent) {
             scene.remove(obstacle);
@@ -270,7 +266,6 @@ function startGame() {
     });
     obstacles = [];
     
-    // UI更新
     updateUI();
 }
 
@@ -278,6 +273,7 @@ function startGame() {
 // ゲームオーバー
 // =========================================
 function gameOver() {
+    console.log('Game Over! Score:', score);
     isGameRunning = false;
     isGameOver = true;
     
@@ -320,26 +316,22 @@ function updatePlayer() {
     } else if (keys.right) {
         playerVelocityX = MOVE_SPEED;
     } else {
-        playerVelocityX *= 0.9; // 減速
+        playerVelocityX *= 0.9;
     }
     
     player.position.x += playerVelocityX;
-    
-    // 左右の制限
     player.position.x = Math.max(-4, Math.min(4, player.position.x));
     
     // ジャンプと重力
     playerVelocityY -= GRAVITY;
     player.position.y += playerVelocityY;
     
-    // 地面との衝突
     if (player.position.y <= PLAYER_START_Y) {
         player.position.y = PLAYER_START_Y;
         playerVelocityY = 0;
         isJumping = false;
     }
     
-    // プレイヤーの回転（視覚効果）
     player.rotation.z += 0.05;
 }
 
@@ -349,14 +341,12 @@ function updatePlayer() {
 function updateObstacles() {
     if (!isGameRunning) return;
     
-    // 障害物の移動
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const obstacle = obstacles[i];
         if (!obstacle) continue;
         
         obstacle.position.z += gameSpeed;
         
-        // 画面外に出たら削除
         if (obstacle.position.z > 5) {
             scene.remove(obstacle);
             obstacles.splice(i, 1);
@@ -364,20 +354,16 @@ function updateObstacles() {
             continue;
         }
         
-        // 衝突判定
         if (checkCollision(player, obstacle)) {
             gameOver();
             return;
         }
     }
     
-    // 新しい障害物の生成
     obstacleSpawnTimer++;
     if (obstacleSpawnTimer >= obstacleSpawnInterval) {
         createObstacle();
         obstacleSpawnTimer = 0;
-        
-        // 難易度上昇
         obstacleSpawnInterval = Math.max(30, obstacleSpawnInterval - 0.5);
         gameSpeed = Math.min(0.5, gameSpeed + 0.001);
     }
@@ -420,7 +406,6 @@ function updateGame() {
     updatePlayer();
     updateObstacles();
     
-    // 距離更新
     distance = Math.floor(score / 10);
     updateUI();
 }
@@ -446,4 +431,6 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+
 
