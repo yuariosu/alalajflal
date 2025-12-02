@@ -10,7 +10,7 @@
             margin: 0; overflow: hidden;
             font-family: 'Segoe UI', sans-serif;
             background: #000; color: #fff;
-            user-select: none;
+            user-select: none; cursor: crosshair;
         }
         canvas { display: block; width: 100vw; height: 100vh; }
 
@@ -30,15 +30,35 @@
         #dist-val { color: #ff00ff; }
         #combo-val { color: #ffaa00; }
 
-        /* ESCヒント */
-        #esc-hint {
+        /* クールダウンゲージ */
+        #cooldown-container {
             position: absolute; top: 20px; right: 20px; z-index: 10;
-            background: rgba(0,0,0,0.5); padding: 8px 15px;
-            border-radius: 4px; font-size: 12px; color: #888;
-            pointer-events: none;
+            width: 150px;
+        }
+        #cooldown-label {
+            font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 5px;
+        }
+        #cooldown-bar-bg {
+            width: 100%; height: 15px; background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+            overflow: hidden;
+        }
+        #cooldown-bar {
+            height: 100%; width: 100%;
+            background: linear-gradient(90deg, #ff0055, #ffaa00);
+            transition: width 0.05s linear;
+            box-shadow: 0 0 10px rgba(255,0,85,0.8);
         }
 
-        /* コンボ表示（中央） */
+        /* ESCヒント */
+        #controls-hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 10; background: rgba(0,0,0,0.5); padding: 8px 20px;
+            border-radius: 4px; font-size: 12px; color: #888;
+            pointer-events: none; text-align: center;
+        }
+
+        /* コンボ表示 */
         #combo-flash {
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 72px; font-weight: 900; color: #ffaa00;
@@ -47,7 +67,6 @@
             font-style: italic; transition: opacity 0.3s;
         }
 
-        /* ニアミスメッセージ */
         #nearmiss-msg {
             position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
             font-size: 36px; font-weight: bold; color: #00ff00;
@@ -56,7 +75,7 @@
             transition: opacity 0.3s;
         }
 
-        /* パワーアップアイコン表示 */
+        /* パワーアップ */
         #powerups {
             position: absolute; top: 80px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
@@ -135,19 +154,28 @@
         </div>
     </div>
 
-    <!-- ESCヒント -->
-    <div id="esc-hint" class="hidden">[ESC] でメニューに戻る</div>
+    <!-- クールダウンゲージ -->
+    <div id="cooldown-container" class="hidden">
+        <div id="cooldown-label">🔫 WEAPON</div>
+        <div id="cooldown-bar-bg">
+            <div id="cooldown-bar"></div>
+        </div>
+    </div>
 
-    <!-- パワーアップ表示 -->
+    <!-- 操作ヒント -->
+    <div id="controls-hint" class="hidden">
+        [A/D] 移動 | [SPACE] ジャンプ | [W/CLICK] 射撃 | [ESC] ポーズ
+    </div>
+
+    <!-- パワーアップ -->
     <div id="powerups"></div>
 
-    <!-- コンボフラッシュ -->
+    <!-- メッセージ -->
     <div id="combo-flash"></div>
     <div id="nearmiss-msg"></div>
 
     <!-- メニュー -->
     <div id="menu">
-        <!-- スタート画面 -->
         <div id="start-screen">
             <h1>NEON RUNNER</h1>
             <p style="margin-bottom: 15px; color: #aaa;">難易度を選択</p>
@@ -159,12 +187,10 @@
             </div>
             <button class="start-btn" id="btn-start">START</button>
             <p style="margin-top: 15px; font-size: 11px; color: #666;">
-                [A/D] 移動 | [SPACE] ジャンプ | [ESC] メニュー<br>
-                💰コイン収集 | 🛡️アイテム取得 | 連続回避でコンボ！
+                💰コイン収集 | 🔫障害物を破壊 | 連続回避でコンボ！
             </p>
         </div>
         
-        <!-- ポーズ画面 -->
         <div id="pause-screen" class="hidden">
             <h1 style="font-size: 36px;">PAUSED</h1>
             <p style="margin: 20px 0; color: #aaa;">一時停止中</p>
@@ -172,12 +198,12 @@
             <button class="menu-btn" id="btn-quit" style="border-color: #ff4444; color: #ff4444;">QUIT</button>
         </div>
         
-        <!-- ゲームオーバー画面 -->
         <div id="gameover-screen" class="hidden">
             <h1 style="color: #ff4444; -webkit-text-fill-color: #ff4444;">GAME OVER</h1>
             <p style="font-size: 18px; margin: 15px 0;">
                 SCORE: <span id="final-score" style="color:#fff; font-weight:bold;">0</span><br>
-                MAX COMBO: <span id="max-combo" style="color:#ffaa00; font-weight:bold;">0</span>
+                MAX COMBO: <span id="max-combo" style="color:#ffaa00; font-weight:bold;">0</span><br>
+                DESTROYED: <span id="destroyed-count" style="color:#ff0055; font-weight:bold;">0</span>
             </p>
             <button class="start-btn" id="btn-retry" style="background: linear-gradient(90deg, #ff4444, #ff0055);">RETRY</button>
             <button class="menu-btn" id="btn-home">HOME</button>
@@ -190,42 +216,45 @@
 
     // ========== 変数 ==========
     let scene, camera, renderer;
-    let player, gridHelper1, gridHelper2; // グリッドを2枚使う
-    let obstacles = [], coins = [], powerups = [];
+    let player, gridHelper1, gridHelper2;
+    let obstacles = [], coins = [], powerups = [], bullets = [], particles = [];
     let stars, starGeo;
-    let isGameRunning = false;
-    let isPaused = false;
+    let isGameRunning = false, isPaused = false;
 
     // ゲーム状態
     let score = 0, distance = 0, combo = 1, maxCombo = 1;
+    let destroyedCount = 0; // 破壊した障害物数
     let gameSpeed = 0, spawnTimer = 0, itemSpawnTimer = 0;
     let difficulty = 'normal';
     let consecutiveAvoid = 0;
 
-    // アクティブなパワーアップ
-    let activeShield = false;
-    let activeBoost = false;
-    let activeSlow = false;
+    // 射撃システム
+    let canShoot = true;
+    let shootCooldown = 0;
+    const SHOOT_COOLDOWN_MAX = 15; // フレーム数（約0.25秒）
+
+    // パワーアップ
+    let activeShield = false, activeBoost = false, activeSlow = false;
     let boostTimer = 0, slowTimer = 0;
 
     // 物理
     let velocityX = 0, velocityY = 0, isJumping = false;
     const GRAVITY = 0.025, JUMP_FORCE = 0.5, PLAYER_Y = 0.5;
-    const keys = { left: false, right: false };
+    const keys = { left: false, right: false, shoot: false };
 
-    // 難易度設定
+    // 難易度設定（大幅に難しく）
     const settings = {
-        easy:   { speed: 0.12, max: 0.35, obstRate: 100, itemRate: 120, coinRate: 80, accel: 0.00005 },
-        normal: { speed: 0.22, max: 0.55, obstRate: 70,  itemRate: 200, coinRate: 120, accel: 0.0003 },
-        hard:   { speed: 0.30, max: 0.75, obstRate: 50,  itemRate: 300, coinRate: 150, accel: 0.0006 },
-        expert: { speed: 0.40, max: 1.0,  obstRate: 35,  itemRate: 400, coinRate: 200, accel: 0.001 }
+        easy:   { speed: 0.18, max: 0.45, obstRate: 60,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.1 },
+        normal: { speed: 0.28, max: 0.70, obstRate: 45,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.2 },
+        hard:   { speed: 0.38, max: 0.95, obstRate: 32,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.35 },
+        expert: { speed: 0.50, max: 1.3,  obstRate: 22,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.5 }
     };
 
     // ========== 初期化 ==========
     function init() {
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050505);
-        scene.fog = new THREE.FogExp2(0x050505, 0.015); // フォグを薄くして遠くまで見えるように
+        scene.fog = new THREE.FogExp2(0x050505, 0.015);
 
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
         camera.position.set(0, 3, 7);
@@ -249,6 +278,7 @@
 
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
+        document.addEventListener('click', onMouseClick);
         window.addEventListener('resize', onResize);
         
         document.getElementById('btn-start').addEventListener('click', startGame);
@@ -261,7 +291,6 @@
     }
 
     function createEnvironment() {
-        // 地面
         const planeGeo = new THREE.PlaneGeometry(60, 250);
         const planeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.6 });
         const ground = new THREE.Mesh(planeGeo, planeMat);
@@ -270,7 +299,6 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // グリッド2枚重ね（継ぎ目を消すため）
         const gridSize = 80;
         gridHelper1 = new THREE.GridHelper(gridSize, 80, 0x00ffff, 0x222222);
         gridHelper1.position.y = 0.02;
@@ -279,7 +307,7 @@
 
         gridHelper2 = new THREE.GridHelper(gridSize, 80, 0x00ffff, 0x222222);
         gridHelper2.position.y = 0.02;
-        gridHelper2.position.z = -gridSize; // 1枚目の後ろに配置
+        gridHelper2.position.z = -gridSize;
         scene.add(gridHelper2);
     }
 
@@ -306,23 +334,23 @@
         scene.add(stars);
     }
 
-    // ========== 難易度選択 ==========
     window.selectDiff = function(level, btn) {
         difficulty = level;
         document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     };
 
-    // ========== ゲーム開始 ==========
     function startGame() {
         hideAllScreens();
-        document.getElementById('esc-hint').classList.remove('hidden');
+        document.getElementById('controls-hint').classList.remove('hidden');
+        document.getElementById('cooldown-container').classList.remove('hidden');
         
-        isGameRunning = true;
-        isPaused = false;
+        isGameRunning = true; isPaused = false;
         score = 0; distance = 0; combo = 1; maxCombo = 1; consecutiveAvoid = 0;
+        destroyedCount = 0;
         spawnTimer = 0; itemSpawnTimer = 0;
         activeShield = false; activeBoost = false; activeSlow = false;
+        canShoot = true; shootCooldown = 0;
 
         const cfg = settings[difficulty];
         gameSpeed = cfg.speed;
@@ -334,39 +362,39 @@
         obstacles.forEach(o => scene.remove(o));
         coins.forEach(c => scene.remove(c));
         powerups.forEach(p => scene.remove(p));
-        obstacles = []; coins = []; powerups = [];
+        bullets.forEach(b => scene.remove(b));
+        particles.forEach(p => scene.remove(p));
+        obstacles = []; coins = []; powerups = []; bullets = []; particles = [];
 
         updateHUD();
         updatePowerupUI();
     }
 
     function pauseGame() {
-        isPaused = true;
-        isGameRunning = false;
+        isPaused = true; isGameRunning = false;
         document.getElementById('menu').classList.remove('hidden');
         document.getElementById('pause-screen').classList.remove('hidden');
     }
 
     function resumeGame() {
-        isPaused = false;
-        isGameRunning = true;
+        isPaused = false; isGameRunning = true;
         hideAllScreens();
-        document.getElementById('esc-hint').classList.remove('hidden');
+        document.getElementById('controls-hint').classList.remove('hidden');
+        document.getElementById('cooldown-container').classList.remove('hidden');
     }
 
     function quitToHome() {
-        isGameRunning = false;
-        isPaused = false;
+        isGameRunning = false; isPaused = false;
         hideAllScreens();
         document.getElementById('menu').classList.remove('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
-        document.getElementById('esc-hint').classList.add('hidden');
         
-        // リセット
         obstacles.forEach(o => scene.remove(o));
         coins.forEach(c => scene.remove(c));
         powerups.forEach(p => scene.remove(p));
-        obstacles = []; coins = []; powerups = [];
+        bullets.forEach(b => scene.remove(b));
+        particles.forEach(p => scene.remove(p));
+        obstacles = []; coins = []; powerups = []; bullets = []; particles = [];
     }
 
     function hideAllScreens() {
@@ -374,27 +402,46 @@
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('pause-screen').classList.add('hidden');
         document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('controls-hint').classList.add('hidden');
+        document.getElementById('cooldown-container').classList.add('hidden');
     }
 
-    // ========== 障害物・アイテム生成 ==========
+    // ========== 障害物生成 ==========
     function spawnObstacle() {
-        const type = Math.random();
-        let w, h;
-        if (type < 0.4) { w=0.8; h=0.8; }
-        else if (type < 0.7) { w=0.6; h=1.6; }
-        else { w=1.5; h=0.6; }
-
-        const geo = new THREE.BoxGeometry(w,h,w);
-        const color = Math.random() > 0.5 ? 0xff0055 : 0xffaa00;
-        const mat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: color, emissiveIntensity: 0.8 });
-        const obs = new THREE.Mesh(geo, mat);
+        const cfg = settings[difficulty];
+        const numObstacles = Math.random() < cfg.multiSpawn ? 2 : 1; // 複数同時出現
         
-        const lanes = [-2.5, 0, 2.5];
-        obs.position.set(lanes[Math.floor(Math.random()*3)], h/2, -50);
-        obs.userData = { width: w, height: h, passed: false };
-        obs.castShadow = true;
-        scene.add(obs);
-        obstacles.push(obs);
+        const availableLanes = [-2.5, 0, 2.5];
+        const usedLanes = [];
+
+        for (let n = 0; n < numObstacles; n++) {
+            const type = Math.random();
+            let w, h;
+            if (type < 0.4) { w=0.8; h=0.8; }
+            else if (type < 0.7) { w=0.6; h=1.6; }
+            else { w=1.5; h=0.6; }
+
+            const geo = new THREE.BoxGeometry(w,h,w);
+            const color = Math.random() > 0.5 ? 0xff0055 : 0xffaa00;
+            const mat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: color, emissiveIntensity: 0.8 });
+            const obs = new THREE.Mesh(geo, mat);
+            
+            // 使われていないレーンから選択
+            let lane;
+            const remaining = availableLanes.filter(l => !usedLanes.includes(l));
+            if (remaining.length > 0) {
+                lane = remaining[Math.floor(Math.random() * remaining.length)];
+                usedLanes.push(lane);
+            } else {
+                lane = availableLanes[Math.floor(Math.random() * 3)];
+            }
+            
+            obs.position.set(lane, h/2, -50);
+            obs.userData = { width: w, height: h, passed: false };
+            obs.castShadow = true;
+            scene.add(obs);
+            obstacles.push(obs);
+        }
     }
 
     function spawnCoin() {
@@ -430,11 +477,114 @@
         powerups.push(item);
     }
 
+    // ========== 射撃システム ==========
+    function shoot() {
+        if (!canShoot || !isGameRunning) return;
+
+        const geo = new THREE.SphereGeometry(0.2, 16, 16);
+        const mat = new THREE.MeshStandardMaterial({ 
+            color: 0x000, emissive: 0xff0055, emissiveIntensity: 1.5 
+        });
+        const bullet = new THREE.Mesh(geo, mat);
+        bullet.position.copy(player.position);
+        bullet.position.z -= 1; // プレイヤーの前から発射
+        
+        const light = new THREE.PointLight(0xff0055, 0.8, 5);
+        bullet.add(light);
+        
+        scene.add(bullet);
+        bullets.push(bullet);
+
+        canShoot = false;
+        shootCooldown = SHOOT_COOLDOWN_MAX;
+    }
+
+    function updateBullets() {
+        const bulletSpeed = 1.5;
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const bullet = bullets[i];
+            bullet.position.z -= bulletSpeed;
+
+            // 障害物との衝突判定
+            let hit = false;
+            for (let j = obstacles.length - 1; j >= 0; j--) {
+                const obs = obstacles[j];
+                const dx = Math.abs(bullet.position.x - obs.position.x);
+                const dy = Math.abs(bullet.position.y - obs.position.y);
+                const dz = Math.abs(bullet.position.z - obs.position.z);
+                
+                const w = obs.userData.width / 2;
+                const h = obs.userData.height / 2;
+
+                if (dx < (0.2 + w) && dy < (0.2 + h) && dz < 0.5) {
+                    // ヒット！
+                    hit = true;
+                    createExplosion(obs.position);
+                    scene.remove(obs);
+                    obstacles.splice(j, 1);
+                    
+                    const destroyScore = 300 * combo;
+                    score += destroyScore;
+                    destroyedCount++;
+                    showMessage(`+${destroyScore} DESTROY!`, 800);
+                    break;
+                }
+            }
+
+            if (hit || bullet.position.z < -60) {
+                scene.remove(bullet);
+                bullets.splice(i, 1);
+            }
+        }
+    }
+
+    function createExplosion(position) {
+        // 爆発エフェクト（パーティクル）
+        for (let i = 0; i < 8; i++) {
+            const geo = new THREE.SphereGeometry(0.1, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff0055 : 0xffaa00 });
+            const particle = new THREE.Mesh(geo, mat);
+            particle.position.copy(position);
+            
+            // ランダム方向の速度
+            particle.userData = {
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                vz: (Math.random() - 0.5) * 0.3,
+                life: 30
+            };
+            
+            scene.add(particle);
+            particles.push(particle);
+        }
+    }
+
+    function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.position.x += p.userData.vx;
+            p.position.y += p.userData.vy;
+            p.position.z += p.userData.vz;
+            p.userData.life--;
+
+            if (p.userData.life <= 0) {
+                scene.remove(p);
+                particles.splice(i, 1);
+            }
+        }
+    }
+
     // ========== 更新ループ ==========
     function update() {
-        // 待機中もグリッドだけは動かす（見た目のため）
         const idleSpeed = 0.08;
         updateGridLoop(isGameRunning ? (activeSlow ? gameSpeed * 0.5 : gameSpeed) : idleSpeed);
+
+        // クールダウン更新
+        if (shootCooldown > 0) {
+            shootCooldown--;
+            if (shootCooldown === 0) canShoot = true;
+        }
+        updateCooldownUI();
 
         if (!isGameRunning) return;
 
@@ -466,7 +616,7 @@
         }
         player.rotation.x -= effectiveSpeed;
 
-        // 星エフェクト
+        // 背景
         if (stars) {
             const positions = stars.geometry.attributes.position.array;
             for(let i=2; i<positions.length; i+=3) {
@@ -475,6 +625,10 @@
             }
             stars.geometry.attributes.position.needsUpdate = true;
         }
+
+        // 弾丸
+        updateBullets();
+        updateParticles();
 
         // 障害物
         for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -598,24 +752,14 @@
         updateHUD();
     }
 
-    // グリッドの無限ループ処理（修正版）
     function updateGridLoop(speed) {
         const gridSize = 80;
-        
         gridHelper1.position.z += speed;
         gridHelper2.position.z += speed;
-
-        // グリッド1が前に出すぎたら後ろに移動
-        if (gridHelper1.position.z > gridSize) {
-            gridHelper1.position.z = gridHelper2.position.z - gridSize;
-        }
-        // グリッド2が前に出すぎたら後ろに移動
-        if (gridHelper2.position.z > gridSize) {
-            gridHelper2.position.z = gridHelper1.position.z - gridSize;
-        }
+        if (gridHelper1.position.z > gridSize) gridHelper1.position.z = gridHelper2.position.z - gridSize;
+        if (gridHelper2.position.z > gridSize) gridHelper2.position.z = gridHelper1.position.z - gridSize;
     }
 
-    // ========== パワーアップ ==========
     function activatePowerup(type) {
         if (type === 'shield') {
             activeShield = true;
@@ -658,7 +802,12 @@
         }
     }
 
-    // ========== UI更新 ==========
+    function updateCooldownUI() {
+        const bar = document.getElementById('cooldown-bar');
+        const percentage = ((SHOOT_COOLDOWN_MAX - shootCooldown) / SHOOT_COOLDOWN_MAX) * 100;
+        bar.style.width = percentage + '%';
+    }
+
     function updateHUD() {
         document.getElementById('score-val').innerText = score;
         document.getElementById('dist-val').innerText = Math.floor(distance) + "m";
@@ -690,23 +839,23 @@
         isGameRunning = false;
         document.getElementById('menu').classList.remove('hidden');
         document.getElementById('gameover-screen').classList.remove('hidden');
-        document.getElementById('esc-hint').classList.add('hidden');
+        document.getElementById('controls-hint').classList.add('hidden');
+        document.getElementById('cooldown-container').classList.add('hidden');
         document.getElementById('final-score').innerText = score;
         document.getElementById('max-combo').innerText = "x" + maxCombo;
+        document.getElementById('destroyed-count').innerText = destroyedCount;
     }
 
     // ========== 入力 ==========
     function onKeyDown(e) {
-        // ESCキーでポーズ
         if (e.code === 'Escape') {
-            if (isGameRunning && !isPaused) {
-                pauseGame();
-            }
+            if (isGameRunning && !isPaused) pauseGame();
             return;
         }
 
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+        if (e.code === 'KeyW' || e.code === 'ArrowUp') shoot();
         if (e.code === 'Space') {
             if (!isJumping && isGameRunning) {
                 velocityY = JUMP_FORCE;
@@ -717,10 +866,16 @@
             }
         }
     }
+
     function onKeyUp(e) {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     }
+
+    function onMouseClick(e) {
+        if (isGameRunning) shoot();
+    }
+
     function onResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -737,3 +892,5 @@
     </script>
 </body>
 </html>
+
+
