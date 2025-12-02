@@ -31,9 +31,6 @@ canvas {
     color: #ffffff;
     font-size: 24px;
     font-weight: bold;
-    text-shadow: 
-        2px 2px 4px rgba(0, 0, 0, 0.9),
-        0 0 10px rgba(0, 0, 0, 0.5);
     z-index: 10;
     pointer-events: none;
 }
@@ -45,15 +42,11 @@ canvas {
     border-radius: 8px;
     backdrop-filter: blur(5px);
     display: inline-block;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
 }
 
-#score {
-    color: #FFD700;
-}
-
-#distance {
-    color: #00FF00;
-}
+#score { color: #FFD700; }
+#distance { color: #00FF00; }
 
 /* =========================================
    スタート画面とゲームオーバー画面
@@ -63,30 +56,15 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(30, 30, 60, 0.95));
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(30, 30, 60, 0.9));
     color: #ffffff;
     padding: 40px 50px;
     border-radius: 20px;
     text-align: center;
     z-index: 100;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.8),
-        0 0 40px rgba(100, 100, 255, 0.3),
-        inset 0 0 20px rgba(255, 255, 255, 0.05);
     border: 2px solid rgba(255, 255, 255, 0.1);
     min-width: 400px;
-    animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -45%);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
 }
 
 #instructions h1 {
@@ -95,27 +73,18 @@ canvas {
     background: linear-gradient(135deg, #FFD700, #FFA500);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
 #instructions p {
     margin: 12px 0;
     font-size: 18px;
     color: #e0e0e0;
-    line-height: 1.6;
-}
-
-#instructions p:first-of-type {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* =========================================
-   ボタンスタイル
+   ボタン
    ========================================= */
-#instructions button {
+button {
     margin-top: 30px;
     padding: 15px 45px;
     font-size: 20px;
@@ -125,177 +94,26 @@ canvas {
     border: none;
     border-radius: 50px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 
-        0 4px 15px rgba(76, 175, 80, 0.4),
-        0 0 20px rgba(76, 175, 80, 0.2);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-#instructions button:hover {
-    background: linear-gradient(135deg, #66BB6A, #388E3C);
+button:hover {
     transform: translateY(-2px);
-    box-shadow: 
-        0 6px 20px rgba(76, 175, 80, 0.6),
-        0 0 30px rgba(76, 175, 80, 0.4);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
-#instructions button:active {
+button:active {
     transform: translateY(0);
-    box-shadow: 
-        0 2px 10px rgba(76, 175, 80, 0.4),
-        0 0 15px rgba(76, 175, 80, 0.2);
 }
 
 #restartButton {
     background: linear-gradient(135deg, #FF6B6B, #C92A2A);
-    box-shadow: 
-        0 4px 15px rgba(255, 107, 107, 0.4),
-        0 0 20px rgba(255, 107, 107, 0.2);
 }
 
 #restartButton:hover {
     background: linear-gradient(135deg, #FF8787, #E03131);
-    box-shadow: 
-        0 6px 20px rgba(255, 107, 107, 0.6),
-        0 0 30px rgba(255, 107, 107, 0.4);
 }
 
-/* =========================================
-   ヘルパークラス
-   ========================================= */
 .hidden {
     display: none !important;
-}
-
-/* =========================================
-   キーボード表示（装飾）
-   ========================================= */
-#instructions p {
-    position: relative;
-}
-
-#instructions p::before {
-    content: '⌨️';
-    margin-right: 8px;
-    font-size: 20px;
-}
-
-#instructions p:last-of-type::before {
-    content: '🎯';
-}
-
-/* =========================================
-   レスポンシブデザイン
-   ========================================= */
-@media (max-width: 768px) {
-    #instructions {
-        min-width: 90%;
-        padding: 30px 25px;
-    }
-    
-    #instructions h1 {
-        font-size: 28px;
-    }
-    
-    #instructions p {
-        font-size: 16px;
-    }
-    
-    #instructions button {
-        padding: 12px 35px;
-        font-size: 18px;
-    }
-    
-    #ui {
-        font-size: 18px;
-        top: 10px;
-        left: 10px;
-    }
-    
-    #ui div {
-        padding: 8px 12px;
-    }
-}
-
-@media (max-width: 480px) {
-    #instructions {
-        padding: 25px 20px;
-    }
-    
-    #instructions h1 {
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-    
-    #instructions p {
-        font-size: 14px;
-        margin: 10px 0;
-    }
-    
-    #instructions button {
-        padding: 10px 30px;
-        font-size: 16px;
-        margin-top: 20px;
-    }
-    
-    #ui {
-        font-size: 16px;
-    }
-}
-
-/* =========================================
-   ローディングアニメーション（オプション）
-   ========================================= */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-}
-
-#instructions button {
-    animation: pulse 2s infinite ease-in-out;
-}
-
-#instructions button:hover {
-    animation: none;
-}
-
-/* =========================================
-   スコア更新アニメーション
-   ========================================= */
-@keyframes scoreUpdate {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-/* =========================================
-   アクセシビリティ
-   ========================================= */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation: none !important;
-        transition: none !important;
-    }
-}
-
-/* フォーカス表示 */
-button:focus {
-    outline: 3px solid rgba(255, 255, 255, 0.5);
-    outline-offset: 3px;
-}
-
-button:focus:not(:focus-visible) {
-    outline: none;
 }
