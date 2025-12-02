@@ -30,13 +30,21 @@
         #dist-val { color: #ff00ff; }
         #combo-val { color: #ffaa00; }
 
+        /* ESCヒント */
+        #esc-hint {
+            position: absolute; top: 20px; right: 20px; z-index: 10;
+            background: rgba(0,0,0,0.5); padding: 8px 15px;
+            border-radius: 4px; font-size: 12px; color: #888;
+            pointer-events: none;
+        }
+
         /* コンボ表示（中央） */
         #combo-flash {
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 72px; font-weight: 900; color: #ffaa00;
             text-shadow: 0 0 20px rgba(255,170,0,0.8);
             opacity: 0; z-index: 50; pointer-events: none;
-            font-style: italic;
+            font-style: italic; transition: opacity 0.3s;
         }
 
         /* ニアミスメッセージ */
@@ -45,12 +53,13 @@
             font-size: 36px; font-weight: bold; color: #00ff00;
             text-shadow: 0 0 15px rgba(0,255,0,0.9);
             opacity: 0; z-index: 50; pointer-events: none;
+            transition: opacity 0.3s;
         }
 
         /* パワーアップアイコン表示 */
         #powerups {
-            position: absolute; top: 20px; right: 20px; z-index: 10;
-            display: flex; gap: 10px;
+            position: absolute; top: 80px; right: 20px; z-index: 10;
+            display: flex; flex-direction: column; gap: 10px;
         }
         .powerup-icon {
             width: 50px; height: 50px; border-radius: 8px;
@@ -95,6 +104,15 @@
             text-transform: uppercase; margin-top: 20px;
         }
         .start-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(0,255,255,0.7); }
+        
+        .menu-btn {
+            padding: 12px 40px; font-size: 18px; font-weight: bold;
+            background: transparent; border: 2px solid #fff;
+            color: #fff; border-radius: 4px;
+            cursor: pointer; transition: all 0.3s;
+            text-transform: uppercase; margin: 10px 5px;
+        }
+        .menu-btn:hover { background: #fff; color: #000; }
 
         .hidden { display: none !important; }
     </style>
@@ -117,6 +135,9 @@
         </div>
     </div>
 
+    <!-- ESCヒント -->
+    <div id="esc-hint" class="hidden">[ESC] でメニューに戻る</div>
+
     <!-- パワーアップ表示 -->
     <div id="powerups"></div>
 
@@ -126,6 +147,7 @@
 
     <!-- メニュー -->
     <div id="menu">
+        <!-- スタート画面 -->
         <div id="start-screen">
             <h1>NEON RUNNER</h1>
             <p style="margin-bottom: 15px; color: #aaa;">難易度を選択</p>
@@ -137,11 +159,20 @@
             </div>
             <button class="start-btn" id="btn-start">START</button>
             <p style="margin-top: 15px; font-size: 11px; color: #666;">
-                [A/D] 移動 | [SPACE] ジャンプ<br>
+                [A/D] 移動 | [SPACE] ジャンプ | [ESC] メニュー<br>
                 💰コイン収集 | 🛡️アイテム取得 | 連続回避でコンボ！
             </p>
         </div>
         
+        <!-- ポーズ画面 -->
+        <div id="pause-screen" class="hidden">
+            <h1 style="font-size: 36px;">PAUSED</h1>
+            <p style="margin: 20px 0; color: #aaa;">一時停止中</p>
+            <button class="menu-btn" id="btn-resume">RESUME</button>
+            <button class="menu-btn" id="btn-quit" style="border-color: #ff4444; color: #ff4444;">QUIT</button>
+        </div>
+        
+        <!-- ゲームオーバー画面 -->
         <div id="gameover-screen" class="hidden">
             <h1 style="color: #ff4444; -webkit-text-fill-color: #ff4444;">GAME OVER</h1>
             <p style="font-size: 18px; margin: 15px 0;">
@@ -149,6 +180,7 @@
                 MAX COMBO: <span id="max-combo" style="color:#ffaa00; font-weight:bold;">0</span>
             </p>
             <button class="start-btn" id="btn-retry" style="background: linear-gradient(90deg, #ff4444, #ff0055);">RETRY</button>
+            <button class="menu-btn" id="btn-home">HOME</button>
         </div>
     </div>
 
@@ -158,16 +190,17 @@
 
     // ========== 変数 ==========
     let scene, camera, renderer;
-    let player, gridHelper;
+    let player, gridHelper1, gridHelper2; // グリッドを2枚使う
     let obstacles = [], coins = [], powerups = [];
     let stars, starGeo;
     let isGameRunning = false;
+    let isPaused = false;
 
     // ゲーム状態
     let score = 0, distance = 0, combo = 1, maxCombo = 1;
     let gameSpeed = 0, spawnTimer = 0, itemSpawnTimer = 0;
     let difficulty = 'normal';
-    let consecutiveAvoid = 0; // 連続回避数
+    let consecutiveAvoid = 0;
 
     // アクティブなパワーアップ
     let activeShield = false;
@@ -180,7 +213,7 @@
     const GRAVITY = 0.025, JUMP_FORCE = 0.5, PLAYER_Y = 0.5;
     const keys = { left: false, right: false };
 
-    // 難易度設定（大幅調整）
+    // 難易度設定
     const settings = {
         easy:   { speed: 0.12, max: 0.35, obstRate: 100, itemRate: 120, coinRate: 80, accel: 0.00005 },
         normal: { speed: 0.22, max: 0.55, obstRate: 70,  itemRate: 200, coinRate: 120, accel: 0.0003 },
@@ -192,9 +225,9 @@
     function init() {
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050505);
-        scene.fog = new THREE.FogExp2(0x050505, 0.02);
+        scene.fog = new THREE.FogExp2(0x050505, 0.015); // フォグを薄くして遠くまで見えるように
 
-        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
         camera.position.set(0, 3, 7);
         camera.lookAt(0, 0, -5);
 
@@ -217,25 +250,37 @@
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
         window.addEventListener('resize', onResize);
+        
         document.getElementById('btn-start').addEventListener('click', startGame);
         document.getElementById('btn-retry').addEventListener('click', startGame);
+        document.getElementById('btn-resume').addEventListener('click', resumeGame);
+        document.getElementById('btn-quit').addEventListener('click', quitToHome);
+        document.getElementById('btn-home').addEventListener('click', quitToHome);
 
         animate();
     }
 
     function createEnvironment() {
-        const planeGeo = new THREE.PlaneGeometry(60, 200);
+        // 地面
+        const planeGeo = new THREE.PlaneGeometry(60, 250);
         const planeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.6 });
         const ground = new THREE.Mesh(planeGeo, planeMat);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.z = -50;
+        ground.position.z = -75;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        gridHelper = new THREE.GridHelper(60, 60, 0x00ffff, 0x222222);
-        gridHelper.position.y = 0.02;
-        gridHelper.position.z = -50;
-        scene.add(gridHelper);
+        // グリッド2枚重ね（継ぎ目を消すため）
+        const gridSize = 80;
+        gridHelper1 = new THREE.GridHelper(gridSize, 80, 0x00ffff, 0x222222);
+        gridHelper1.position.y = 0.02;
+        gridHelper1.position.z = 0;
+        scene.add(gridHelper1);
+
+        gridHelper2 = new THREE.GridHelper(gridSize, 80, 0x00ffff, 0x222222);
+        gridHelper2.position.y = 0.02;
+        gridHelper2.position.z = -gridSize; // 1枚目の後ろに配置
+        scene.add(gridHelper2);
     }
 
     function createPlayer() {
@@ -252,8 +297,8 @@
 
     function createStarfield() {
         starGeo = new THREE.BufferGeometry();
-        const count = 400, pos = new Float32Array(count * 3);
-        for(let i=0; i<count*3; i++) pos[i] = (Math.random() - 0.5) * 100;
+        const count = 500, pos = new Float32Array(count * 3);
+        for(let i=0; i<count*3; i++) pos[i] = (Math.random() - 0.5) * 120;
         starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         starGeo.attributes.position.setUsage(THREE.DynamicDrawUsage);
         const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15 });
@@ -270,8 +315,11 @@
 
     // ========== ゲーム開始 ==========
     function startGame() {
-        document.getElementById('menu').classList.add('hidden');
+        hideAllScreens();
+        document.getElementById('esc-hint').classList.remove('hidden');
+        
         isGameRunning = true;
+        isPaused = false;
         score = 0; distance = 0; combo = 1; maxCombo = 1; consecutiveAvoid = 0;
         spawnTimer = 0; itemSpawnTimer = 0;
         activeShield = false; activeBoost = false; activeSlow = false;
@@ -292,7 +340,43 @@
         updatePowerupUI();
     }
 
-    // ========== 障害物生成 ==========
+    function pauseGame() {
+        isPaused = true;
+        isGameRunning = false;
+        document.getElementById('menu').classList.remove('hidden');
+        document.getElementById('pause-screen').classList.remove('hidden');
+    }
+
+    function resumeGame() {
+        isPaused = false;
+        isGameRunning = true;
+        hideAllScreens();
+        document.getElementById('esc-hint').classList.remove('hidden');
+    }
+
+    function quitToHome() {
+        isGameRunning = false;
+        isPaused = false;
+        hideAllScreens();
+        document.getElementById('menu').classList.remove('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('esc-hint').classList.add('hidden');
+        
+        // リセット
+        obstacles.forEach(o => scene.remove(o));
+        coins.forEach(c => scene.remove(c));
+        powerups.forEach(p => scene.remove(p));
+        obstacles = []; coins = []; powerups = [];
+    }
+
+    function hideAllScreens() {
+        document.getElementById('menu').classList.add('hidden');
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('pause-screen').classList.add('hidden');
+        document.getElementById('gameover-screen').classList.add('hidden');
+    }
+
+    // ========== 障害物・アイテム生成 ==========
     function spawnObstacle() {
         const type = Math.random();
         let w, h;
@@ -313,7 +397,6 @@
         obstacles.push(obs);
     }
 
-    // ========== コイン生成 ==========
     function spawnCoin() {
         const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
         const mat = new THREE.MeshStandardMaterial({ color: 0x000, emissive: 0xffff00, emissiveIntensity: 1 });
@@ -327,7 +410,6 @@
         coins.push(coin);
     }
 
-    // ========== パワーアップ生成 ==========
     function spawnPowerup() {
         const types = ['shield', 'boost', 'slow'];
         const type = types[Math.floor(Math.random()*types.length)];
@@ -350,13 +432,11 @@
 
     // ========== 更新ループ ==========
     function update() {
-        if (!isGameRunning) {
-            if (gridHelper) {
-                gridHelper.position.z += 0.05;
-                if (gridHelper.position.z > 0) gridHelper.position.z = -50;
-            }
-            return;
-        }
+        // 待機中もグリッドだけは動かす（見た目のため）
+        const idleSpeed = 0.08;
+        updateGridLoop(isGameRunning ? (activeSlow ? gameSpeed * 0.5 : gameSpeed) : idleSpeed);
+
+        if (!isGameRunning) return;
 
         const cfg = settings[difficulty];
         const effectiveSpeed = activeSlow ? gameSpeed * 0.5 : gameSpeed;
@@ -386,15 +466,12 @@
         }
         player.rotation.x -= effectiveSpeed;
 
-        // 背景
-        gridHelper.position.z += effectiveSpeed;
-        if (gridHelper.position.z > 0) gridHelper.position.z = -50;
-
+        // 星エフェクト
         if (stars) {
             const positions = stars.geometry.attributes.position.array;
             for(let i=2; i<positions.length; i+=3) {
                 positions[i] += effectiveSpeed * 3;
-                if(positions[i] > 10) positions[i] = -90;
+                if(positions[i] > 15) positions[i] = -100;
             }
             stars.geometry.attributes.position.needsUpdate = true;
         }
@@ -405,7 +482,6 @@
             obs.position.z += effectiveSpeed;
             obs.rotation.y += 0.02;
 
-            // 衝突判定
             const dx = Math.abs(player.position.x - obs.position.x);
             const dy = Math.abs(player.position.y - obs.position.y);
             const dz = Math.abs(player.position.z - obs.position.z);
@@ -418,26 +494,23 @@
                     updatePowerupUI();
                     scene.remove(obs);
                     obstacles.splice(i, 1);
-                    showMessage("SHIELD SAVED!", 1000);
+                    showMessage("🛡️ SHIELD SAVED!", 1000);
                 } else {
                     gameOver();
                     return;
                 }
             }
 
-            // ニアミス判定
             if (!obs.userData.passed && obs.position.z > player.position.z && dz < 1.5 && dx < 1.2) {
                 obs.userData.passed = true;
                 consecutiveAvoid++;
                 
-                // コンボ増加
                 if (consecutiveAvoid % 3 === 0) {
                     combo = Math.min(10, combo + 1);
                     if (combo > maxCombo) maxCombo = combo;
                     showCombo();
                 }
 
-                // ニアミス判定
                 if (dx < 0.8) {
                     const bonus = 50 * combo;
                     score += bonus;
@@ -445,7 +518,6 @@
                 }
             }
 
-            // 画面外
             if (obs.position.z > 6) {
                 scene.remove(obs);
                 obstacles.splice(i, 1);
@@ -520,21 +592,37 @@
             if (slowTimer <= 0) { activeSlow = false; updatePowerupUI(); }
         }
 
-        // 加速
         if (gameSpeed < cfg.max) gameSpeed += cfg.accel;
 
         distance += effectiveSpeed;
         updateHUD();
     }
 
-    // ========== パワーアップ発動 ==========
+    // グリッドの無限ループ処理（修正版）
+    function updateGridLoop(speed) {
+        const gridSize = 80;
+        
+        gridHelper1.position.z += speed;
+        gridHelper2.position.z += speed;
+
+        // グリッド1が前に出すぎたら後ろに移動
+        if (gridHelper1.position.z > gridSize) {
+            gridHelper1.position.z = gridHelper2.position.z - gridSize;
+        }
+        // グリッド2が前に出すぎたら後ろに移動
+        if (gridHelper2.position.z > gridSize) {
+            gridHelper2.position.z = gridHelper1.position.z - gridSize;
+        }
+    }
+
+    // ========== パワーアップ ==========
     function activatePowerup(type) {
         if (type === 'shield') {
             activeShield = true;
-            showMessage("🛡️ SHIELD ACTIVE!", 1500);
+            showMessage("🛡️ SHIELD!", 1500);
         } else if (type === 'boost') {
             activeBoost = true;
-            boostTimer = 300; // 5秒
+            boostTimer = 300;
             showMessage("⚡ BOOST x2!", 1500);
         } else if (type === 'slow') {
             activeSlow = true;
@@ -601,14 +689,22 @@
     function gameOver() {
         isGameRunning = false;
         document.getElementById('menu').classList.remove('hidden');
-        document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('gameover-screen').classList.remove('hidden');
+        document.getElementById('esc-hint').classList.add('hidden');
         document.getElementById('final-score').innerText = score;
         document.getElementById('max-combo').innerText = "x" + maxCombo;
     }
 
     // ========== 入力 ==========
     function onKeyDown(e) {
+        // ESCキーでポーズ
+        if (e.code === 'Escape') {
+            if (isGameRunning && !isPaused) {
+                pauseGame();
+            }
+            return;
+        }
+
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
         if (e.code === 'Space') {
