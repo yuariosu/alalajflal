@@ -4,29 +4,424 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Endless Runner</title>
-    <link rel="stylesheet" href="jal.css">
+    <style>
+        /* =========================================
+           CSS (スタイル設定)
+           ========================================= */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            background: #000;
+            user-select: none;
+        }
+        canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* UIレイヤー */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: block; /* 縦に並べる */
+            text-shadow: 1px 1px 2px black;
+        }
+        #score { color: #FFD700; }
+        #distance { color: #00FF00; }
+
+        /* スタート/ゲームオーバー画面 */
+        #menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(20, 20, 40, 0.95), rgba(40, 40, 80, 0.95));
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 100;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            color: white;
+            min-width: 320px;
+        }
+        #menu h1 {
+            margin: 0 0 20px 0;
+            font-size: 32px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #menu p { margin: 10px 0; font-size: 16px; color: #ddd; }
+        #menu .key-guide {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        button {
+            margin-top: 25px;
+            padding: 15px 50px;
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(76, 175, 80, 0.6); }
+        button:active { transform: translateY(1px); }
+
+        .hidden { display: none !important; }
+        
+        /* ロードエラー表示用 */
+        #error-msg {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: red;
+            color: white;
+            padding: 10px;
+            z-index: 200;
+        }
+    </style>
 </head>
 <body>
-    <!-- ゲームUI（スコア・距離） -->
+
+    <!-- エラー表示 -->
+    <div id="error-msg">Three.js ライブラリの読み込みに失敗しました。ネット接続を確認してください。</div>
+
+    <!-- ゲームUI -->
     <div id="ui">
-        <div id="score-container">Score: <span id="score">0</span></div>
-        <div id="distance-container">Distance: <span id="distance">0</span>m</div>
+        <div class="stat-box">Score: <span id="score">0</span></div>
+        <div class="stat-box">Dist: <span id="distance">0</span>m</div>
     </div>
 
-    <!-- スタート・ゲームオーバー画面 -->
-    <div id="instructions">
-        <h1>3D エンドレスランナー</h1>
-        <p>← → or A D : 左右移動</p>
-        <p>SPACE : ジャンプ</p>
-        <p>障害物を避けてハイスコアを目指せ！</p>
-        <button id="startButton">ゲームスタート</button>
+    <!-- メニュー画面 -->
+    <div id="menu">
+        <div id="start-content">
+            <h1>3D RUNNER</h1>
+            <p>障害物を避けて走り続けろ！</p>
+            <div class="key-guide">
+                操作方法<br>
+                [ ← / → ] または [ A / D ] で移動<br>
+                [ Space ] でジャンプ
+            </div>
+            <button id="btn-start">START</button>
+        </div>
+        
+        <div id="gameover-content" class="hidden">
+            <h1>GAME OVER</h1>
+            <p>Score: <span id="final-score">0</span></p>
+            <p>Distance: <span id="final-dist">0</span>m</p>
+            <button id="btn-retry">RETRY</button>
+        </div>
     </div>
 
-    <!-- Three.js ライブラリの読み込み -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- ゲームメインスクリプト -->
-    <script src="jal.js"></script>
+    <!-- Three.js ライブラリ (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('error-msg').style.display='block';"></script>
+
+    <!-- ゲームロジック -->
+    <script>
+    // =========================================
+    // ゲームロジック (JS)
+    // =========================================
+    
+    // Three.jsが読み込まれているかチェック
+    if (typeof THREE === 'undefined') {
+        document.getElementById('error-msg').style.display = 'block';
+        document.getElementById('menu').innerHTML = "<h1>Error</h1><p>ライブラリの読み込みに失敗しました。<br>インターネットに接続してリロードしてください。</p>";
+        throw new Error("Three.js not loaded");
+    }
+
+    let scene, camera, renderer;
+    let player, ground;
+    let obstacles = [];
+    let isGameRunning = false;
+    let score = 0;
+    let distance = 0;
+    let gameSpeed = 0.2;
+    
+    // スポーン管理
+    let spawnTimer = 0;
+    let spawnInterval = 60;
+
+    // プレイヤー物理
+    let velocityY = 0;
+    let velocityX = 0;
+    let isJumping = false;
+    const GRAVITY = 0.025;
+    const JUMP_FORCE = 0.55;
+    const SPEED_X = 0.2;
+    const PLAYER_Y = 0.5;
+
+    // キー管理
+    const keys = { left: false, right: false };
+
+    // DOM要素
+    const menu = document.getElementById('menu');
+    const startContent = document.getElementById('start-content');
+    const gameOverContent = document.getElementById('gameover-content');
+    const uiScore = document.getElementById('score');
+    const uiDist = document.getElementById('distance');
+
+    function init() {
+        // 1. シーン
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 10, 40);
+
+        // 2. カメラ
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 3, 6);
+        camera.lookAt(0, 0, 0);
+
+        // 3. レンダラー
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // 4. ライト
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 5. オブジェクト生成
+        createGround();
+        createPlayer();
+
+        // 6. イベント設定
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        window.addEventListener('resize', onResize);
+        
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-retry').addEventListener('click', startGame);
+
+        // ループ開始
+        animate();
+    }
+
+    function createGround() {
+        const geo = new THREE.PlaneGeometry(14, 100);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x4CAF50 });
+        ground = new THREE.Mesh(geo, mat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // 装飾ライン
+        const lineGeo = new THREE.PlaneGeometry(0.2, 100);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        [-2, 0, 2].forEach(x => {
+            if (x === 0) return; // 真ん中は開ける
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.rotation.x = -Math.PI / 2;
+            line.position.set(x, 0.01, 0);
+            scene.add(line);
+        });
+    }
+
+    function createPlayer() {
+        const geo = new THREE.SphereGeometry(0.5, 16, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+        player = new THREE.Mesh(geo, mat);
+        player.position.y = PLAYER_Y;
+        player.position.z = 2;
+        player.castShadow = true;
+        scene.add(player);
+    }
+
+    function startGame() {
+        menu.classList.add('hidden');
+        startContent.classList.add('hidden');
+        gameOverContent.classList.add('hidden');
+        
+        isGameRunning = true;
+        score = 0;
+        distance = 0;
+        gameSpeed = 0.2;
+        spawnInterval = 60;
+        
+        // プレイヤーリセット
+        player.position.set(0, PLAYER_Y, 2);
+        velocityX = 0;
+        velocityY = 0;
+        isJumping = false;
+
+        // 障害物全消去
+        obstacles.forEach(o => scene.remove(o));
+        obstacles = [];
+        
+        uiScore.innerText = "0";
+        uiDist.innerText = "0";
+    }
+
+    function gameOver() {
+        isGameRunning = false;
+        menu.classList.remove('hidden');
+        gameOverContent.classList.remove('hidden');
+        
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('final-dist').innerText = distance;
+    }
+
+    function spawnObstacle() {
+        const type = Math.random();
+        let geo, color, yPos;
+
+        if (type < 0.33) { // Box
+            geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            yPos = 0.4;
+            color = 0xFFA500;
+        } else if (type < 0.66) { // Tall
+            geo = new THREE.BoxGeometry(0.6, 1.5, 0.6);
+            yPos = 0.75;
+            color = 0x8A2BE2;
+        } else { // Wide
+            geo = new THREE.BoxGeometry(1.5, 0.6, 0.6);
+            yPos = 0.3;
+            color = 0x1E90FF;
+        }
+
+        const mat = new THREE.MeshStandardMaterial({ color: color });
+        const obs = new THREE.Mesh(geo, mat);
+        
+        // レーン選択 (-2.5, 0, 2.5)
+        const lanes = [-2.5, 0, 2.5];
+        const xPos = lanes[Math.floor(Math.random() * lanes.length)];
+        
+        obs.position.set(xPos, yPos, -30); // 遠くに出現
+        obs.castShadow = true;
+        obs.receiveShadow = true;
+        
+        scene.add(obs);
+        obstacles.push(obs);
+    }
+
+    function update() {
+        if (!isGameRunning) return;
+
+        // 1. プレイヤー移動
+        if (keys.left) velocityX = -SPEED_X;
+        else if (keys.right) velocityX = SPEED_X;
+        else velocityX *= 0.8; // 摩擦
+
+        player.position.x += velocityX;
+        player.position.x = Math.max(-3.5, Math.min(3.5, player.position.x)); // 壁
+
+        // ジャンプ
+        velocityY -= GRAVITY;
+        player.position.y += velocityY;
+
+        if (player.position.y <= PLAYER_Y) {
+            player.position.y = PLAYER_Y;
+            velocityY = 0;
+            isJumping = false;
+        }
+
+        // 2. 障害物管理
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obs = obstacles[i];
+            obs.position.z += gameSpeed;
+
+            // 衝突判定 (簡易AABB)
+            // プレイヤーと障害物の距離で判定（軽量化）
+            const dx = Math.abs(player.position.x - obs.position.x);
+            const dz = Math.abs(player.position.z - obs.position.z);
+            const dy = Math.abs(player.position.y - obs.position.y);
+
+            if (dx < 0.6 && dz < 0.6 && dy < 0.8) {
+                gameOver();
+                return;
+            }
+
+            // 画面外で削除
+            if (obs.position.z > 6) {
+                scene.remove(obs);
+                obstacles.splice(i, 1);
+                score += 10;
+                uiScore.innerText = score;
+            }
+        }
+
+        // スポーン
+        spawnTimer++;
+        if (spawnTimer > spawnInterval) {
+            spawnObstacle();
+            spawnTimer = 0;
+            // 難易度上昇
+            if (gameSpeed < 0.6) gameSpeed += 0.002;
+            if (spawnInterval > 25) spawnInterval -= 0.2;
+        }
+
+        // 距離
+        distance += Math.round(gameSpeed * 10);
+        uiDist.innerText = Math.floor(distance / 10);
+        
+        // 演出（回転）
+        player.rotation.x -= 0.2;
+    }
+
+    function onKeyDown(e) {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+        if (e.code === 'Space') {
+            if (!isJumping && isGameRunning) {
+                velocityY = JUMP_FORCE;
+                isJumping = true;
+            }
+            // ゲームオーバー時のリトライ用ショートカット
+            if (!isGameRunning && !menu.classList.contains('hidden') && gameOverContent.classList.contains('hidden') === false) {
+                startGame();
+            }
+        }
+    }
+
+    function onKeyUp(e) {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        update();
+        renderer.render(scene, camera);
+    }
+
+    // 初期化実行
+    init();
+
+    </script>
 </body>
 </html>
-
 
