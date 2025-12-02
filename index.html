@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON RUNNER 2049</title>
-    <!-- 高級感のあるフォントを読み込み -->
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <title>NEON RUNNER 2049 (FIXED)</title>
     <style>
         /* =========================================
-           CSS: プレミアム・ダークテーマ
+           CSS: プレミアム・ダークテーマ (修正版)
            ========================================= */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             margin: 0;
             overflow: hidden;
-            font-family: 'Rajdhani', sans-serif;
-            background: #050505;
-            user-select: none;
+            font-family: 'Segoe UI', sans-serif; /* フォント読み込み失敗時の対策 */
+            background: #000;
             color: #fff;
+            user-select: none;
         }
         canvas { display: block; width: 100vw; height: 100vh; }
 
@@ -32,119 +30,113 @@
             gap: 20px;
         }
         .stat-box {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             padding: 10px 25px;
-            border-radius: 4px; /* 角を少しシャープに */
-            font-size: 28px;
+            border-radius: 4px;
+            font-size: 24px;
             font-weight: 700;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(5px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             text-transform: uppercase;
-            letter-spacing: 2px;
         }
-        .stat-label { font-size: 12px; color: #888; display: block; letter-spacing: 1px; margin-bottom: -5px;}
-        #score { color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); }
-        #distance { color: #ff00ff; text-shadow: 0 0 10px rgba(255, 0, 255, 0.5); }
+        .stat-label { font-size: 12px; color: #aaa; display: block; margin-bottom: -5px;}
+        #score { color: #00ffff; }
+        #distance { color: #ff00ff; }
 
-        /* メニュー画面 (ガラスモーフィズム + ネオン) */
+        /* メニュー画面 */
         #menu {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(10, 10, 20, 0.85);
-            padding: 50px 80px;
+            background: rgba(15, 15, 30, 0.9);
+            padding: 40px 60px;
             border-radius: 16px;
             text-align: center;
             z-index: 100;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
-            min-width: 400px;
-            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.15);
+            min-width: 350px;
+            backdrop-filter: blur(10px);
         }
         
         h1 {
-            margin: 0 0 30px 0;
-            font-size: 48px;
+            margin: 0 0 20px 0;
+            font-size: 42px;
             background: linear-gradient(to right, #00ffff, #ff00ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-            letter-spacing: 4px;
             font-weight: 800;
             font-style: italic;
         }
 
-        p { color: #aaa; margin-bottom: 20px; letter-spacing: 1px; }
-
-        /* 難易度選択ボタン */
+        /* 難易度ボタン */
         .difficulty-selector {
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 10px;
             margin-bottom: 30px;
         }
         .diff-btn {
             background: transparent;
-            border: 1px solid #444;
+            border: 1px solid #555;
             color: #888;
             padding: 10px 20px;
             cursor: pointer;
             border-radius: 4px;
-            font-family: 'Rajdhani', sans-serif;
             font-weight: bold;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
         .diff-btn:hover { border-color: #fff; color: #fff; }
         .diff-btn.active {
             background: #fff;
             color: #000;
             border-color: #fff;
-            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
 
         /* メインボタン */
         .action-btn {
-            padding: 15px 60px;
-            font-size: 24px;
+            padding: 15px 50px;
+            font-size: 22px;
             font-weight: bold;
-            font-family: 'Rajdhani', sans-serif;
             background: linear-gradient(90deg, #00ffff, #0088ff);
             color: #000;
             border: none;
-            border-radius: 2px;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.3s;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
         }
         .action-btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
-            background: linear-gradient(90deg, #fff, #00ffff);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.7);
         }
 
         .hidden { display: none !important; }
         
-        #error-msg {
+        /* エラー表示用 */
+        #debug-console {
             display: none;
             position: absolute;
-            top: 0; left: 0; width: 100%;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            text-align: center;
-            padding: 10px;
-            z-index: 200;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            color: red;
+            padding: 20px;
+            z-index: 9999;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow: auto;
         }
     </style>
 </head>
 <body>
 
-    <div id="error-msg">Library load failed. Check connection.</div>
+    <!-- エラー表示領域 -->
+    <div id="debug-console"></div>
 
-    <!-- UI -->
     <div id="ui">
         <div class="stat-box">
             <span class="stat-label">SCORE</span>
@@ -156,224 +148,202 @@
         </div>
     </div>
 
-    <!-- メニュー -->
     <div id="menu">
         <div id="start-screen">
             <h1>NEON RUNNER</h1>
-            <p>SELECT DIFFICULTY</p>
-            
             <div class="difficulty-selector">
-                <button class="diff-btn" onclick="setDifficulty('easy')">EASY</button>
-                <button class="diff-btn active" onclick="setDifficulty('normal')">NORMAL</button>
-                <button class="diff-btn" onclick="setDifficulty('hard')">HARD</button>
+                <button class="diff-btn" onclick="selectDiff('easy', this)">EASY</button>
+                <button class="diff-btn active" onclick="selectDiff('normal', this)">NORMAL</button>
+                <button class="diff-btn" onclick="selectDiff('hard', this)">HARD</button>
             </div>
-
-            <button class="action-btn" id="btn-start">IGNITION</button>
-            <p style="margin-top: 20px; font-size: 12px; color: #666;">[A/D] MOVE - [SPACE] JUMP</p>
+            <button class="action-btn" id="btn-start">START GAME</button>
+            <p style="margin-top: 15px; font-size: 12px; color: #666;">[ ← / → ] MOVE &nbsp; [ SPACE ] JUMP</p>
         </div>
         
         <div id="gameover-screen" class="hidden">
-            <h1 style="color: #ff4444; background: none; -webkit-text-fill-color: #ff4444;">SYSTEM CRASH</h1>
-            <p>SCORE: <span id="final-score" style="color:#fff; font-weight:bold;">0</span></p>
-            <button class="action-btn" id="btn-retry" style="background: linear-gradient(90deg, #ff4444, #ff0055);">REBOOT</button>
+            <h1 style="font-size: 36px; color: #ff4444; -webkit-text-fill-color: #ff4444;">GAME OVER</h1>
+            <p style="margin-bottom:20px;">SCORE: <span id="final-score" style="color:#fff; font-weight:bold;">0</span></p>
+            <button class="action-btn" id="btn-retry" style="background: linear-gradient(90deg, #ff4444, #ff0055);">RETRY</button>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('error-msg').style.display='block';"></script>
+    <!-- Three.js 読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-    // =========================================
-    // プレミアム・ゲームロジック
-    // =========================================
-    
-    if (typeof THREE === 'undefined') {
-        document.getElementById('error-msg').style.display = 'block';
-        throw new Error("Three.js not loaded");
-    }
-
-    // --- 設定 ---
-    let currentDifficulty = 'normal';
-    const difficultySettings = {
-        easy:   { speed: 0.15, maxSpeed: 0.4, spawnRate: 80,  accel: 0.0001 },
-        normal: { speed: 0.25, maxSpeed: 0.6, spawnRate: 60,  accel: 0.0005 },
-        hard:   { speed: 0.35, maxSpeed: 0.9, spawnRate: 40,  accel: 0.0010 }
+    // エラーハンドリング
+    window.onerror = function(msg, url, line) {
+        const consoleDiv = document.getElementById('debug-console');
+        consoleDiv.style.display = 'block';
+        consoleDiv.innerHTML += `Error: ${msg}\nLine: ${line}\n\n`;
+        return false;
     };
 
-    // --- グローバル変数 ---
+    // =========================================
+    // ゲームロジック
+    // =========================================
+    
+    // Three.jsのロード確認
+    if (typeof THREE === 'undefined') {
+        throw new Error("Three.js failed to load. Please check your internet connection.");
+    }
+
     let scene, camera, renderer;
-    let player, ground, gridHelper;
+    let player, gridHelper;
     let obstacles = [];
-    let stars = []; // 背景の星
+    let stars, starGeo;
     let isGameRunning = false;
+    
+    // ゲーム状態
     let score = 0;
     let distance = 0;
     let gameSpeed = 0;
     let spawnTimer = 0;
+    let currentDifficulty = 'normal';
     
-    // 物理・操作
-    let velocityY = 0;
+    // 物理
     let velocityX = 0;
-    let targetRotationZ = 0; // カメラの傾き用
+    let velocityY = 0;
     let isJumping = false;
-    
     const GRAVITY = 0.025;
     const JUMP_FORCE = 0.5;
-    const PLAYER_SPEED = 0.2;
     const PLAYER_Y = 0.5;
     
+    // 入力
     const keys = { left: false, right: false };
 
-    // --- 初期化 ---
+    const difficultySettings = {
+        easy:   { speed: 0.15, max: 0.4, rate: 90, accel: 0.0001 },
+        normal: { speed: 0.25, max: 0.6, rate: 60, accel: 0.0005 },
+        hard:   { speed: 0.35, max: 0.9, rate: 40, accel: 0.0010 }
+    };
+
     function init() {
-        // 1. シーン (黒背景)
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050505);
-        // 奥の方を暗くぼかす（フォグ）
-        scene.fog = new THREE.FogExp2(0x050505, 0.03);
+        try {
+            // シーン
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.FogExp2(0x050505, 0.02);
 
-        // 2. カメラ
-        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 2.5, 6);
-        camera.lookAt(0, 0, -10);
+            // カメラ
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 3, 7);
+            camera.lookAt(0, 0, -5);
 
-        // 3. レンダラー (発光表現のため、トーンマッピング等を調整したかったが、シンプルに保つ)
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
+            // レンダラー
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
 
-        // 4. ライティング (サイバーパンク風)
-        const ambient = new THREE.AmbientLight(0xffffff, 0.2); // 暗め
-        scene.add(ambient);
+            // ライト
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4); // 明るめに調整
+            scene.add(ambient);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
 
-        // プレイヤーを照らすスポットライト
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(5, 10, 5);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+            // オブジェクト生成
+            createEnvironment();
+            createPlayer();
+            createStarfield();
 
-        // 青とピンクのポイントライトで雰囲気出し
-        const blueLight = new THREE.PointLight(0x00ffff, 1, 20);
-        blueLight.position.set(-5, 2, 0);
-        scene.add(blueLight);
-        
-        const pinkLight = new THREE.PointLight(0xff00ff, 1, 20);
-        pinkLight.position.set(5, 2, 0);
-        scene.add(pinkLight);
+            // イベント
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onResize);
+            
+            document.getElementById('btn-start').addEventListener('click', startGame);
+            document.getElementById('btn-retry').addEventListener('click', startGame);
 
-        // 5. オブジェクト生成
-        createEnvironment(); // 地面・グリッド
-        createPlayer();
-        createStarfield();   // 背景の星
-
-        // 6. イベント
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
-        window.addEventListener('resize', onResize);
-        document.getElementById('btn-start').addEventListener('click', startGame);
-        document.getElementById('btn-retry').addEventListener('click', startGame);
-
-        animate();
+            // ループ開始
+            animate();
+        } catch (e) {
+            throw e;
+        }
     }
 
-    // --- 環境生成 ---
     function createEnvironment() {
-        // 地面（反射する黒い床）
-        const planeGeo = new THREE.PlaneGeometry(40, 200);
+        // 地面（反射床）
+        const planeGeo = new THREE.PlaneGeometry(60, 200);
         const planeMat = new THREE.MeshStandardMaterial({ 
-            color: 0x111111, 
-            roughness: 0.1, 
-            metalness: 0.8 
+            color: 0x111111, roughness: 0.2, metalness: 0.6 
         });
-        ground = new THREE.Mesh(planeGeo, planeMat);
+        const ground = new THREE.Mesh(planeGeo, planeMat);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.z = -40; // 少し前に伸ばす
+        ground.position.z = -50;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // サイバーグリッド (無限に動いているように見せる用)
-        gridHelper = new THREE.GridHelper(40, 40, 0x00ffff, 0x222222);
-        gridHelper.position.y = 0.01;
-        gridHelper.position.z = -40;
+        // グリッド
+        gridHelper = new THREE.GridHelper(60, 60, 0x00ffff, 0x222222);
+        gridHelper.position.y = 0.02;
+        gridHelper.position.z = -50;
         scene.add(gridHelper);
     }
 
-    // --- プレイヤー生成 ---
     function createPlayer() {
-        // 発光する球体
-        const geometry = new THREE.SphereGeometry(0.5, 32, 32);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0x000000,
-            emissive: 0x00ffff,     // 自発光
-            emissiveIntensity: 0.8,
-            roughness: 0.1,
-            metalness: 1.0
+        const geo = new THREE.SphereGeometry(0.5, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ 
+            color: 0x000000, emissive: 0x00ffff, emissiveIntensity: 0.7 
         });
-        player = new THREE.Mesh(geometry, material);
-        player.position.y = PLAYER_Y;
-        player.position.z = 2;
+        player = new THREE.Mesh(geo, mat);
+        player.position.set(0, PLAYER_Y, 2);
         player.castShadow = true;
-        
-        // トレイル（光の尾）っぽい演出用のポイントライトをプレイヤーに追従させる
-        const pLight = new THREE.PointLight(0x00ffff, 1, 5);
-        pLight.position.set(0, 0, 0);
-        player.add(pLight);
-
         scene.add(player);
+        
+        // プレイヤーの光
+        const light = new THREE.PointLight(0x00ffff, 1, 8);
+        player.add(light);
     }
 
-    // --- 背景の星生成（スピード感用） ---
     function createStarfield() {
-        const starGeo = new THREE.BufferGeometry();
-        const starCount = 500;
-        const posArray = new Float32Array(starCount * 3);
-
-        for(let i = 0; i < starCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 100; // 広範囲に散らす
+        starGeo = new THREE.BufferGeometry();
+        const count = 400;
+        const pos = new Float32Array(count * 3);
+        for(let i=0; i<count*3; i++) {
+            pos[i] = (Math.random() - 0.5) * 100;
         }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        // 動的更新のためにUsageを設定
+        starGeo.attributes.position.setUsage(THREE.DynamicDrawUsage);
         
-        starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-        const starMat = new THREE.PointsMaterial({
-            size: 0.1,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        stars = new THREE.Points(starGeo, starMat);
+        const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15 });
+        stars = new THREE.Points(starGeo, mat);
         scene.add(stars);
     }
 
-    // --- 難易度設定UI ---
-    window.setDifficulty = function(level) {
+    // 難易度選択（グローバル関数として定義）
+    window.selectDiff = function(level, btnElement) {
         currentDifficulty = level;
-        // ボタンの見た目更新
-        document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        // ボタンのアクティブ切り替え
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
     };
 
-    // --- ゲーム開始 ---
     function startGame() {
+        // UI切り替え
+        document.getElementById('menu').classList.add('hidden');
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('gameover-screen').classList.add('hidden');
-        document.getElementById('menu').classList.add('hidden');
 
         isGameRunning = true;
         score = 0;
         distance = 0;
+        spawnTimer = 0;
         
-        // 難易度適用
         const setting = difficultySettings[currentDifficulty];
         gameSpeed = setting.speed;
-        spawnTimer = 0;
 
         // リセット
         player.position.set(0, PLAYER_Y, 2);
+        player.rotation.set(0,0,0);
         velocityX = 0;
         velocityY = 0;
-        player.rotation.set(0,0,0);
-        
-        // 障害物削除
+        isJumping = false;
+
         obstacles.forEach(o => scene.remove(o));
         obstacles = [];
 
@@ -381,131 +351,98 @@
         document.getElementById('distance').innerText = "0m";
     }
 
-    // --- 障害物生成 ---
     function spawnObstacle() {
-        // ネオンカラーパレット
-        const colors = [0xff0055, 0xffaa00, 0x00ff00, 0xaa00ff];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-
-        // 形状ランダム
         const type = Math.random();
-        let geo, w, h, d;
+        let geo, w, h;
         
-        if (type < 0.4) { // Box
-            w=0.8; h=0.8; d=0.8;
-        } else if (type < 0.7) { // Tall
-            w=0.5; h=1.8; d=0.5;
-        } else { // Wide
-            w=1.6; h=0.5; d=0.5;
-        }
-        geo = new THREE.BoxGeometry(w, h, d);
+        if (type < 0.4) { w=0.8; h=0.8; geo = new THREE.BoxGeometry(w,h,w); }
+        else if (type < 0.7) { w=0.6; h=1.6; geo = new THREE.BoxGeometry(w,h,w); }
+        else { w=1.5; h=0.6; geo = new THREE.BoxGeometry(w,h,0.6); }
 
-        // 発光マテリアル
+        const color = Math.random() > 0.5 ? 0xff0055 : 0xffaa00;
         const mat = new THREE.MeshStandardMaterial({ 
-            color: 0x111111,
-            emissive: color,
-            emissiveIntensity: 0.8,
-            metalness: 0.8,
-            roughness: 0.2
+            color: 0x111111, emissive: color, emissiveIntensity: 0.8 
         });
         
         const obs = new THREE.Mesh(geo, mat);
-        
-        // レーン (-2.5, 0, 2.5)
         const lanes = [-2.5, 0, 2.5];
-        const lane = lanes[Math.floor(Math.random() * lanes.length)];
-        
-        obs.position.set(lane, h/2, -40); // 奥から出現
+        obs.position.set(lanes[Math.floor(Math.random()*3)], h/2, -50);
         obs.castShadow = true;
-        obs.receiveShadow = true;
-
-        // 障害物にもライトをつける（リッチな表現）
-        const light = new THREE.PointLight(color, 0.5, 3);
-        light.position.set(0, 0, 0);
-        obs.add(light);
-
         scene.add(obs);
         obstacles.push(obs);
     }
 
-    // --- ゲームループ ---
     function update() {
         if (!isGameRunning) {
-            // 待機画面でも背景だけ少し動かす演出
-            gridHelper.position.z += 0.05;
-            if(gridHelper.position.z > 0) gridHelper.position.z = -40;
+            // 待機中も背景をゆっくり動かす
+            if (gridHelper) {
+                gridHelper.position.z += 0.05;
+                if (gridHelper.position.z > 0) gridHelper.position.z = -50;
+            }
             return;
         }
 
         const setting = difficultySettings[currentDifficulty];
 
-        // 1. プレイヤー制御
+        // 1. プレイヤー移動
+        const speed = 0.25;
         if (keys.left) {
-            velocityX = -PLAYER_SPEED;
-            targetRotationZ = 0.3; // 左に傾く
+            velocityX = -speed;
+            player.rotation.z = 0.2; // 傾き
         } else if (keys.right) {
-            velocityX = PLAYER_SPEED;
-            targetRotationZ = -0.3; // 右に傾く
+            velocityX = speed;
+            player.rotation.z = -0.2;
         } else {
             velocityX *= 0.8;
-            targetRotationZ = 0;   // 戻る
+            player.rotation.z *= 0.9;
         }
-
         player.position.x += velocityX;
         player.position.x = Math.max(-3.5, Math.min(3.5, player.position.x));
-        
-        // カメラの傾き（補間アニメーション）
-        camera.rotation.z += (targetRotationZ - camera.rotation.z) * 0.1;
-        // カメラ位置追従（少し遅れてついてくる）
-        camera.position.x += (player.position.x * 0.3 - camera.position.x) * 0.1;
 
         // ジャンプ
         velocityY -= GRAVITY;
         player.position.y += velocityY;
-
         if (player.position.y <= PLAYER_Y) {
             player.position.y = PLAYER_Y;
             velocityY = 0;
             isJumping = false;
-            // 着地時に少しパーティクル出したいが省略
         }
-        
-        // プレイヤー回転（転がる演出）
-        player.rotation.x -= gameSpeed;
+        player.rotation.x -= gameSpeed; // 回転
 
-        // 2. 背景演出（無限グリッド）
+        // 2. 背景ループ
         gridHelper.position.z += gameSpeed;
-        if (gridHelper.position.z > 0) gridHelper.position.z = -40;
+        if (gridHelper.position.z > 0) gridHelper.position.z = -50;
 
-        // 星の移動
-        const starPos = stars.geometry.attributes.position.array;
-        for(let i=2; i<starPos.length; i+=3) {
-            starPos[i] += gameSpeed * 5; // 星は速く流れる
-            if(starPos[i] > 20) starPos[i] = -80;
+        // 星エフェクト
+        if (stars) {
+            const positions = stars.geometry.attributes.position.array;
+            for(let i=2; i<positions.length; i+=3) {
+                positions[i] += gameSpeed * 3;
+                if(positions[i] > 10) positions[i] = -90;
+            }
+            stars.geometry.attributes.position.needsUpdate = true;
         }
-        stars.geometry.attributes.position.needsUpdate = true;
 
-        // 3. 障害物管理
+        // 3. 障害物
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const obs = obstacles[i];
             obs.position.z += gameSpeed;
 
-            // 衝突判定
+            // 衝突判定 (AABB簡易版)
             const dx = Math.abs(player.position.x - obs.position.x);
-            const dz = Math.abs(player.position.z - obs.position.z);
             const dy = Math.abs(player.position.y - obs.position.y);
+            const dz = Math.abs(player.position.z - obs.position.z);
             
-            // 判定サイズ
-            const sizeX = obs.geometry.parameters.width / 2 + 0.4; 
-            const sizeY = obs.geometry.parameters.height / 2 + 0.4;
+            // 障害物のサイズ取得
+            const w = obs.geometry.parameters.width / 2;
+            const h = obs.geometry.parameters.height / 2;
 
-            if (dx < sizeX && dz < 0.8 && dy < sizeY) {
+            if (dx < (0.4 + w) && dy < (0.4 + h) && dz < 0.6) {
                 gameOver();
                 return;
             }
 
-            // 画面外処理
-            if (obs.position.z > 6) {
+            if (obs.position.z > 5) {
                 scene.remove(obs);
                 obstacles.splice(i, 1);
                 score += 100;
@@ -515,18 +452,14 @@
 
         // スポーン管理
         spawnTimer++;
-        // 難易度に応じたスポーンレート
-        if (spawnTimer > setting.spawnRate) {
+        if (spawnTimer > setting.rate) {
             spawnObstacle();
             spawnTimer = 0;
         }
 
         // 加速
-        if (gameSpeed < setting.maxSpeed) {
-            gameSpeed += setting.accel;
-        }
+        if (gameSpeed < setting.max) gameSpeed += setting.accel;
 
-        // 距離更新
         distance += gameSpeed;
         document.getElementById('distance').innerText = Math.floor(distance) + "m";
     }
@@ -538,7 +471,6 @@
         document.getElementById('final-score').innerText = score;
     }
 
-    // --- キー入力 ---
     function onKeyDown(e) {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
@@ -553,19 +485,27 @@
             }
         }
     }
+    
     function onKeyUp(e) {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     }
+
     function onResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    function animate() {
+        requestAnimationFrame(animate);
+        update();
+        renderer.render(scene, camera);
+    }
+
     // スタート
     init();
+
     </script>
 </body>
 </html>
-
