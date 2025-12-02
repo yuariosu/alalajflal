@@ -3,79 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Runner Game</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #gameCanvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 24px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            z-index: 10;
-        }
-        #instructions {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 100;
-        }
-        #instructions h1 {
-            margin-top: 0;
-        }
-        #instructions button {
-            margin-top: 20px;
-            padding: 15px 40px;
-            font-size: 18px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #instructions button:hover {
-            background: #45a049;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+    <title>3D Endless Runner</title>
+    <link rel="stylesheet" href="jal.css">
 </head>
 <body>
+    <!-- ゲームUI（スコア・距離） -->
     <div id="ui">
-        <div>スコア: <span id="score">0</span></div>
-        <div>距離: <span id="distance">0</span>m</div>
+        <div id="score-container">Score: <span id="score">0</span></div>
+        <div id="distance-container">Distance: <span id="distance">0</span>m</div>
     </div>
 
+    <!-- スタート・ゲームオーバー画面 -->
     <div id="instructions">
-        <h1>🎮 3D エンドレスランナー</h1>
-        <p>← → キー: 左右移動</p>
-        <p>スペースキー: ジャンプ</p>
-        <p>障害物を避けて、できるだけ遠くへ！</p>
+        <h1>3D エンドレスランナー</h1>
+        <p>← → or A D : 左右移動</p>
+        <p>SPACE : ジャンプ</p>
+        <p>障害物を避けてハイスコアを目指せ！</p>
         <button id="startButton">ゲームスタート</button>
     </div>
 
-    <!-- Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
-    
-    <!-- ゲームロジック -->
-    <script src="game.js"></script>
+    <!-- Three.js ライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- ゲームメインスクリプト -->
+    <script src="jal.js"></script>
 </body>
 </html>
+
 
