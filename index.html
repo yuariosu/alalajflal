@@ -243,12 +243,12 @@
     const GRAVITY = 0.025, JUMP_FORCE = 0.5, PLAYER_Y = 0.5;
     const keys = { left: false, right: false, shoot: false };
 
-    // 難易度設定（さらに敵増加 + 敵の攻撃）
+    // 難易度設定（敵の射撃頻度を明確化）
     const settings = {
-        easy:   { speed: 0.18, max: 0.45, obstRate: 45,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.15, enemyShoot: 0 },
-        normal: { speed: 0.28, max: 0.70, obstRate: 32,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.3, enemyShoot: 0 },
-        hard:   { speed: 0.38, max: 0.95, obstRate: 22,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.45, enemyShoot: 0.15 },
-        expert: { speed: 0.50, max: 1.4,  obstRate: 16,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.6, enemyShoot: 0.35 }
+        easy:   { speed: 0.18, max: 0.45, obstRate: 45,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.15, enemyShootInterval: 0 },
+        normal: { speed: 0.28, max: 0.70, obstRate: 32,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.3, enemyShootInterval: 0 },
+        hard:   { speed: 0.38, max: 0.95, obstRate: 22,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.45, enemyShootInterval: 90 },  // 90フレーム（1.5秒）に1回
+        expert: { speed: 0.50, max: 1.4,  obstRate: 16,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.6, enemyShootInterval: 50 }   // 50フレーム（0.8秒）に1回
     };
 
     // ========== 初期化 ==========
@@ -425,8 +425,8 @@
             else { w=1.5; h=0.6; }
 
             const geo = new THREE.BoxGeometry(w,h,w);
-            // 赤い障害物は攻撃する
-            const canShoot = Math.random() > 0.5;
+            // 赤い障害物は攻撃する（Hard以上の場合のみ）
+            const canShoot = (cfg.enemyShootInterval > 0) && (Math.random() > 0.4); // 60%の確率で赤
             const color = canShoot ? 0xff0055 : 0xffaa00;
             const mat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: color, emissiveIntensity: 0.8 });
             const obs = new THREE.Mesh(geo, mat);
@@ -441,7 +441,13 @@
             }
             
             obs.position.set(lane, h/2, -50);
-            obs.userData = { width: w, height: h, passed: false, canShoot: canShoot, shootTimer: 0 };
+            obs.userData = { 
+                width: w, 
+                height: h, 
+                passed: false, 
+                canShoot: canShoot, 
+                shootTimer: Math.floor(Math.random() * 30) // ランダム初期値でずらす
+            };
             obs.castShadow = true;
             scene.add(obs);
             obstacles.push(obs);
@@ -503,7 +509,7 @@
         shootCooldown = SHOOT_COOLDOWN_MAX;
     }
 
-    // 敵の弾発射
+    // 敵の弾発射（修正版：確実に発射）
     function enemyShoot(fromPos) {
         const geo = new THREE.SphereGeometry(0.15, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ 
@@ -515,7 +521,7 @@
         // プレイヤーへの方向を計算
         const direction = new THREE.Vector3();
         direction.subVectors(player.position, fromPos).normalize();
-        bullet.userData = { vx: direction.x * 0.5, vy: direction.y * 0.5, vz: direction.z * 0.5 };
+        bullet.userData = { vx: direction.x * 0.4, vy: direction.y * 0.4, vz: direction.z * 0.4 };
         
         const light = new THREE.PointLight(0xff00ff, 0.6, 4);
         bullet.add(light);
@@ -588,9 +594,9 @@
             bullet.position.y += bullet.userData.vy;
             bullet.position.z += bullet.userData.vz;
 
-            // プレイヤーとの衝突（当たり判定を調整：プレイヤー有利に）
+            // プレイヤーとの衝突
             const dist = bullet.position.distanceTo(player.position);
-            if (dist < 0.4) { // 0.5から0.4に縮小
+            if (dist < 0.4) {
                 if (activeShield) {
                     activeShield = false;
                     updatePowerupUI();
@@ -698,29 +704,30 @@
         updateBullets();
         updateParticles();
 
-        // 障害物
+        // 障害物（敵の射撃ロジック修正）
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const obs = obstacles[i];
             obs.position.z += effectiveSpeed;
             obs.rotation.y += 0.02;
 
-            // 敵が攻撃（Hard以上）
-            if (obs.userData.canShoot && Math.random() < cfg.enemyShoot) {
+            // 【修正】敵の射撃ロジック：シンプルに確実に撃つ
+            if (obs.userData.canShoot && cfg.enemyShootInterval > 0) {
                 obs.userData.shootTimer++;
-                if (obs.userData.shootTimer > 80 && obs.position.z < 0 && obs.position.z > -30) {
+                // 画面内にいて、一定間隔経過したら撃つ
+                if (obs.userData.shootTimer >= cfg.enemyShootInterval && 
+                    obs.position.z < 0 && obs.position.z > -40) {
                     enemyShoot(obs.position);
-                    obs.userData.shootTimer = 0;
+                    obs.userData.shootTimer = 0; // リセット
                 }
             }
 
-            // 衝突判定（プレイヤー有利に調整：20%縮小）
+            // 衝突判定
             const dx = Math.abs(player.position.x - obs.position.x);
             const dy = Math.abs(player.position.y - obs.position.y);
             const dz = Math.abs(player.position.z - obs.position.z);
             const w = obs.userData.width / 2;
             const h = obs.userData.height / 2;
 
-            // 当たり判定を緩く（0.4 → 0.3に変更）
             if (dx < (0.3 + w * 0.8) && dy < (0.3 + h * 0.8) && dz < 0.5) {
                 if (activeShield) {
                     activeShield = false;
@@ -971,6 +978,7 @@
     </script>
 </body>
 </html>
+
 
 
 
