@@ -14,7 +14,6 @@
         }
         canvas { display: block; width: 100vw; height: 100vh; }
 
-        /* UI */
         #hud {
             position: absolute; top: 20px; left: 20px; z-index: 10;
             display: flex; gap: 15px; pointer-events: none;
@@ -30,7 +29,6 @@
         #dist-val { color: #ff00ff; }
         #combo-val { color: #ffaa00; }
 
-        /* クールダウンゲージ */
         #cooldown-container {
             position: absolute; top: 20px; right: 20px; z-index: 10;
             width: 150px;
@@ -50,7 +48,6 @@
             box-shadow: 0 0 10px rgba(255,0,85,0.8);
         }
 
-        /* 操作ヒント */
         #controls-hint {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             z-index: 10; background: rgba(0,0,0,0.5); padding: 8px 20px;
@@ -58,7 +55,6 @@
             pointer-events: none; text-align: center;
         }
 
-        /* メッセージ */
         #combo-flash {
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 72px; font-weight: 900; color: #ffaa00;
@@ -75,7 +71,6 @@
             transition: opacity 0.3s;
         }
 
-        /* パワーアップ */
         #powerups {
             position: absolute; top: 80px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
@@ -89,7 +84,6 @@
         }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
-        /* メニュー */
         #menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(10,10,25,0.95); padding: 40px 60px; border-radius: 12px;
@@ -138,7 +132,6 @@
 </head>
 <body>
 
-    <!-- HUD -->
     <div id="hud">
         <div class="stat">
             <div class="stat-label">Score</div>
@@ -154,7 +147,6 @@
         </div>
     </div>
 
-    <!-- クールダウンゲージ -->
     <div id="cooldown-container" class="hidden">
         <div id="cooldown-label">🔫 WEAPON</div>
         <div id="cooldown-bar-bg">
@@ -162,19 +154,15 @@
         </div>
     </div>
 
-    <!-- 操作ヒント -->
     <div id="controls-hint" class="hidden">
         [A/D] 移動 | [SPACE] ジャンプ | [W/CLICK] 射撃 | [ESC] ポーズ
     </div>
 
-    <!-- パワーアップ -->
     <div id="powerups"></div>
 
-    <!-- メッセージ -->
     <div id="combo-flash"></div>
     <div id="nearmiss-msg"></div>
 
-    <!-- メニュー -->
     <div id="menu">
         <div id="start-screen">
             <h1>NEON RUNNER</h1>
@@ -215,43 +203,37 @@
     <script>
     if (typeof THREE === 'undefined') throw new Error("Three.js not loaded");
 
-    // ========== 変数 ==========
     let scene, camera, renderer;
     let player, gridHelper1, gridHelper2;
     let obstacles = [], coins = [], powerups = [], bullets = [], enemyBullets = [], particles = [];
     let stars, starGeo;
     let isGameRunning = false, isPaused = false;
 
-    // ゲーム状態
     let score = 0, distance = 0, combo = 1, maxCombo = 1;
     let destroyedCount = 0;
     let gameSpeed = 0, spawnTimer = 0, itemSpawnTimer = 0;
     let difficulty = 'normal';
     let consecutiveAvoid = 0;
 
-    // 射撃システム
     let canShoot = true;
     let shootCooldown = 0;
     const SHOOT_COOLDOWN_MAX = 15;
 
-    // パワーアップ
     let activeShield = false, activeBoost = false, activeSlow = false;
     let boostTimer = 0, slowTimer = 0;
 
-    // 物理
     let velocityX = 0, velocityY = 0, isJumping = false;
     const GRAVITY = 0.025, JUMP_FORCE = 0.5, PLAYER_Y = 0.5;
-    const keys = { left: false, right: false, shoot: false };
+    const keys = { left: false, right: false };
 
-    // 難易度設定（敵の射撃頻度を明確化）
+    // 【修正】敵の射撃間隔を大幅短縮 + 障害物増加
     const settings = {
-        easy:   { speed: 0.18, max: 0.45, obstRate: 45,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.15, enemyShootInterval: 0 },
-        normal: { speed: 0.28, max: 0.70, obstRate: 32,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.3, enemyShootInterval: 0 },
-        hard:   { speed: 0.38, max: 0.95, obstRate: 22,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.45, enemyShootInterval: 90 },  // 90フレーム（1.5秒）に1回
-        expert: { speed: 0.50, max: 1.4,  obstRate: 16,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.6, enemyShootInterval: 50 }   // 50フレーム（0.8秒）に1回
+        easy:   { speed: 0.18, max: 0.45, obstRate: 40,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.2, enemyShootInterval: 0 },
+        normal: { speed: 0.28, max: 0.70, obstRate: 28,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.4, enemyShootInterval: 0 },
+        hard:   { speed: 0.38, max: 0.95, obstRate: 18,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.5, enemyShootInterval: 25 },  // 25フレーム（0.4秒）に短縮
+        expert: { speed: 0.50, max: 1.4,  obstRate: 12,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.65, enemyShootInterval: 15 }  // 15フレーム（0.25秒）
     };
 
-    // ========== 初期化 ==========
     function init() {
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050505);
@@ -409,12 +391,13 @@
         document.getElementById('cooldown-container').classList.add('hidden');
     }
 
-    // ========== 障害物生成 ==========
+    // 【修正】レーンを5本に + たまにレーン外にも出現
     function spawnObstacle() {
         const cfg = settings[difficulty];
-        const numObstacles = Math.random() < cfg.multiSpawn ? (Math.random() < 0.3 ? 3 : 2) : 1;
+        const numObstacles = Math.random() < cfg.multiSpawn ? (Math.random() < 0.4 ? 3 : 2) : 1;
         
-        const availableLanes = [-2.5, 0, 2.5];
+        // 5レーン + たまにランダム位置
+        const lanes = [-3, -1.5, 0, 1.5, 3];
         const usedLanes = [];
 
         for (let n = 0; n < numObstacles; n++) {
@@ -425,19 +408,23 @@
             else { w=1.5; h=0.6; }
 
             const geo = new THREE.BoxGeometry(w,h,w);
-            // 赤い障害物は攻撃する（Hard以上の場合のみ）
-            const canShoot = (cfg.enemyShootInterval > 0) && (Math.random() > 0.4); // 60%の確率で赤
+            const canShoot = (cfg.enemyShootInterval > 0) && (Math.random() > 0.3); // 70%が赤
             const color = canShoot ? 0xff0055 : 0xffaa00;
             const mat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: color, emissiveIntensity: 0.8 });
             const obs = new THREE.Mesh(geo, mat);
             
             let lane;
-            const remaining = availableLanes.filter(l => !usedLanes.includes(l));
-            if (remaining.length > 0) {
-                lane = remaining[Math.floor(Math.random() * remaining.length)];
-                usedLanes.push(lane);
+            // 20%の確率でレーン外（ランダム位置）
+            if (Math.random() < 0.2) {
+                lane = (Math.random() - 0.5) * 6; // -3 ~ 3 のランダム
             } else {
-                lane = availableLanes[Math.floor(Math.random() * 3)];
+                const remaining = lanes.filter(l => !usedLanes.includes(l));
+                if (remaining.length > 0) {
+                    lane = remaining[Math.floor(Math.random() * remaining.length)];
+                    usedLanes.push(lane);
+                } else {
+                    lane = lanes[Math.floor(Math.random() * lanes.length)];
+                }
             }
             
             obs.position.set(lane, h/2, -50);
@@ -446,7 +433,8 @@
                 height: h, 
                 passed: false, 
                 canShoot: canShoot, 
-                shootTimer: Math.floor(Math.random() * 30) // ランダム初期値でずらす
+                shootTimer: 0,
+                hasShot: false // 初回射撃フラグ
             };
             obs.castShadow = true;
             scene.add(obs);
@@ -460,8 +448,8 @@
         const coin = new THREE.Mesh(geo, mat);
         coin.rotation.x = Math.PI / 2;
         
-        const lanes = [-2.5, 0, 2.5];
-        coin.position.set(lanes[Math.floor(Math.random()*3)], 1, -50);
+        const lanes = [-3, -1.5, 0, 1.5, 3];
+        coin.position.set(lanes[Math.floor(Math.random()*lanes.length)], 1, -50);
         coin.userData = { type: 'coin' };
         scene.add(coin);
         coins.push(coin);
@@ -480,14 +468,13 @@
         const mat = new THREE.MeshStandardMaterial({ color: 0x000, emissive: color, emissiveIntensity: 1 });
         const item = new THREE.Mesh(geo, mat);
         
-        const lanes = [-2.5, 0, 2.5];
-        item.position.set(lanes[Math.floor(Math.random()*3)], 0.8, -50);
+        const lanes = [-3, -1.5, 0, 1.5, 3];
+        item.position.set(lanes[Math.floor(Math.random()*lanes.length)], 0.8, -50);
         item.userData = { type: type };
         scene.add(item);
         powerups.push(item);
     }
 
-    // ========== 射撃システム ==========
     function shoot() {
         if (!canShoot || !isGameRunning) return;
 
@@ -509,7 +496,6 @@
         shootCooldown = SHOOT_COOLDOWN_MAX;
     }
 
-    // 敵の弾発射（修正版：確実に発射）
     function enemyShoot(fromPos) {
         const geo = new THREE.SphereGeometry(0.15, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ 
@@ -518,10 +504,9 @@
         const bullet = new THREE.Mesh(geo, mat);
         bullet.position.copy(fromPos);
         
-        // プレイヤーへの方向を計算
         const direction = new THREE.Vector3();
         direction.subVectors(player.position, fromPos).normalize();
-        bullet.userData = { vx: direction.x * 0.4, vy: direction.y * 0.4, vz: direction.z * 0.4 };
+        bullet.userData = { vx: direction.x * 0.5, vy: direction.y * 0.5, vz: direction.z * 0.5 };
         
         const light = new THREE.PointLight(0xff00ff, 0.6, 4);
         bullet.add(light);
@@ -533,14 +518,12 @@
     function updateBullets() {
         const bulletSpeed = 1.5;
         
-        // プレイヤーの弾
         for (let i = bullets.length - 1; i >= 0; i--) {
             const bullet = bullets[i];
             bullet.position.z -= bulletSpeed;
 
             let hit = false;
             
-            // 障害物との衝突
             for (let j = obstacles.length - 1; j >= 0; j--) {
                 const obs = obstacles[j];
                 const dx = Math.abs(bullet.position.x - obs.position.x);
@@ -564,7 +547,6 @@
                 }
             }
             
-            // 敵の弾との衝突（迎撃）
             if (!hit) {
                 for (let j = enemyBullets.length - 1; j >= 0; j--) {
                     const eBullet = enemyBullets[j];
@@ -587,14 +569,12 @@
             }
         }
         
-        // 敵の弾
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
             const bullet = enemyBullets[i];
             bullet.position.x += bullet.userData.vx;
             bullet.position.y += bullet.userData.vy;
             bullet.position.z += bullet.userData.vz;
 
-            // プレイヤーとの衝突
             const dist = bullet.position.distanceTo(player.position);
             if (dist < 0.4) {
                 if (activeShield) {
@@ -650,7 +630,6 @@
         }
     }
 
-    // ========== 更新ループ ==========
     function update() {
         const idleSpeed = 0.08;
         updateGridLoop(isGameRunning ? (activeSlow ? gameSpeed * 0.5 : gameSpeed) : idleSpeed);
@@ -666,7 +645,6 @@
         const cfg = settings[difficulty];
         const effectiveSpeed = activeSlow ? gameSpeed * 0.5 : gameSpeed;
 
-        // プレイヤー移動
         const moveSpeed = 0.25;
         if (keys.left) {
             velocityX = -moveSpeed;
@@ -679,9 +657,8 @@
             player.rotation.z *= 0.9;
         }
         player.position.x += velocityX;
-        player.position.x = Math.max(-3.5, Math.min(3.5, player.position.x));
+        player.position.x = Math.max(-3.2, Math.min(3.2, player.position.x)); // 移動範囲調整
 
-        // ジャンプ
         velocityY -= GRAVITY;
         player.position.y += velocityY;
         if (player.position.y <= PLAYER_Y) {
@@ -691,7 +668,6 @@
         }
         player.rotation.x -= effectiveSpeed;
 
-        // 背景
         if (stars) {
             const positions = stars.geometry.attributes.position.array;
             for(let i=2; i<positions.length; i+=3) {
@@ -704,24 +680,25 @@
         updateBullets();
         updateParticles();
 
-        // 障害物（敵の射撃ロジック修正）
+        // 【修正】敵の射撃ロジック：確実に動作
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const obs = obstacles[i];
             obs.position.z += effectiveSpeed;
             obs.rotation.y += 0.02;
 
-            // 【修正】敵の射撃ロジック：シンプルに確実に撃つ
+            // 敵の射撃（確実に発射）
             if (obs.userData.canShoot && cfg.enemyShootInterval > 0) {
                 obs.userData.shootTimer++;
-                // 画面内にいて、一定間隔経過したら撃つ
-                if (obs.userData.shootTimer >= cfg.enemyShootInterval && 
-                    obs.position.z < 0 && obs.position.z > -40) {
-                    enemyShoot(obs.position);
-                    obs.userData.shootTimer = 0; // リセット
+                // 画面内に入ったらすぐ撃つ + その後も定期的に撃つ
+                if (obs.position.z > -50 && obs.position.z < 5) {
+                    if (!obs.userData.hasShot || obs.userData.shootTimer >= cfg.enemyShootInterval) {
+                        enemyShoot(obs.position);
+                        obs.userData.hasShot = true;
+                        obs.userData.shootTimer = 0;
+                    }
                 }
             }
 
-            // 衝突判定
             const dx = Math.abs(player.position.x - obs.position.x);
             const dy = Math.abs(player.position.y - obs.position.y);
             const dz = Math.abs(player.position.z - obs.position.z);
@@ -767,7 +744,6 @@
             }
         }
 
-        // コイン
         for (let i = coins.length - 1; i >= 0; i--) {
             const coin = coins[i];
             coin.position.z += effectiveSpeed;
@@ -788,7 +764,6 @@
             }
         }
 
-        // パワーアップ
         for (let i = powerups.length - 1; i >= 0; i--) {
             const item = powerups[i];
             item.position.z += effectiveSpeed;
@@ -808,7 +783,6 @@
             }
         }
 
-        // スポーン
         spawnTimer++;
         if (spawnTimer > cfg.obstRate) {
             spawnObstacle();
@@ -822,7 +796,6 @@
         }
         if (Math.random() < 0.002) spawnPowerup();
 
-        // パワーアップタイマー
         if (activeBoost) {
             boostTimer--;
             if (boostTimer <= 0) { activeBoost = false; updatePowerupUI(); }
@@ -932,7 +905,6 @@
         document.getElementById('destroyed-count').innerText = destroyedCount;
     }
 
-    // ========== 入力 ==========
     function onKeyDown(e) {
         if (e.code === 'Escape') {
             if (isGameRunning && !isPaused) pauseGame();
@@ -978,8 +950,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
