@@ -492,28 +492,43 @@
         shootCooldown = SHOOT_COOLDOWN_MAX;
     }
 
-    // 【バランス調整版】敵の弾：発射時に狙うが、その後は直進のみ
+    // 【修正】敵の弾：レーンロック方式（直線弾、追尾なし）
     function enemyShoot(fromPos) {
         const geo = new THREE.SphereGeometry(0.15, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ 
             color: 0x000, emissive: 0xff00ff, emissiveIntensity: 1.5 
         });
         const bullet = new THREE.Mesh(geo, mat);
-        bullet.position.copy(fromPos);
-        
-        // 発射時点でプレイヤーの位置を狙うが、その後は直進
-        const direction = new THREE.Vector3();
-        direction.subVectors(player.position, fromPos);
-        direction.normalize(); // 正規化して一定速度に
-        
-        const speed = 0.45; // 弾速（調整可能）
-        
+
+        // 5本のレーン（障害物と同じ）
+        const lanes = [-3, -1.5, 0, 1.5, 3];
+
+        // プレイヤーに最も近いレーンを検出
+        let targetLane = lanes[0];
+        let bestDist = Math.abs(player.position.x - lanes[0]);
+        for (let i = 1; i < lanes.length; i++) {
+            const d = Math.abs(player.position.x - lanes[i]);
+            if (d < bestDist) {
+                bestDist = d;
+                targetLane = lanes[i];
+            }
+        }
+
+        // 弾の初期位置：狙ったレーン上に固定
+        bullet.position.set(
+            targetLane,      // X はレーン座標
+            fromPos.y,       // 高さは敵と同じ
+            fromPos.z        // Z は発射元と同じ
+        );
+
+        // 完全直進：Z 方向だけ進む
+        const speedZ = 0.7;
         bullet.userData = { 
-            vx: direction.x * speed,
-            vy: direction.y * speed,
-            vz: direction.z * speed
+            vx: 0,
+            vy: 0,
+            vz: speedZ
         };
-        
+
         const light = new THREE.PointLight(0xff00ff, 0.6, 4);
         bullet.add(light);
         
@@ -953,6 +968,7 @@
     </script>
 </body>
 </html>
+
 
 
 
