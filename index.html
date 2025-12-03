@@ -492,7 +492,7 @@
         shootCooldown = SHOOT_COOLDOWN_MAX;
     }
 
-    // 【完全修正】敵の弾：完全に直線的に飛ぶ（プレイヤー位置を一切参照しない）
+    // 【バランス調整版】敵の弾：発射時に狙うが、その後は直進のみ
     function enemyShoot(fromPos) {
         const geo = new THREE.SphereGeometry(0.15, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ 
@@ -501,13 +501,17 @@
         const bullet = new THREE.Mesh(geo, mat);
         bullet.position.copy(fromPos);
         
-        // プレイヤーの位置を一切参照せず、ランダムな横ブレ + 前方へ直進のみ
-        const randomSpread = (Math.random() - 0.5) * 0.3; // わずかなランダムな横ブレ
+        // 発射時点でプレイヤーの位置を狙うが、その後は直進
+        const direction = new THREE.Vector3();
+        direction.subVectors(player.position, fromPos);
+        direction.normalize(); // 正規化して一定速度に
+        
+        const speed = 0.45; // 弾速（調整可能）
         
         bullet.userData = { 
-            vx: randomSpread,  // ランダムな横方向のみ（プレイヤー位置と無関係）
-            vy: 0,             // Y方向は変化なし
-            vz: 0.7            // Z方向は前方へ一定速度（完全に直進）
+            vx: direction.x * speed,
+            vy: direction.y * speed,
+            vz: direction.z * speed
         };
         
         const light = new THREE.PointLight(0xff00ff, 0.6, 4);
@@ -949,6 +953,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
