@@ -176,7 +176,7 @@
             <button class="start-btn" id="btn-start">START</button>
             <p style="margin-top: 15px; font-size: 11px; color: #666;">
                 💰コイン | 🔫障害物破壊 | 連続回避でコンボ！<br>
-                Hard以上: 敵の反撃に注意
+                Hard以上: 敵の弾幕を避けろ
             </p>
         </div>
         
@@ -226,12 +226,11 @@
     const GRAVITY = 0.025, JUMP_FORCE = 0.5, PLAYER_Y = 0.5;
     const keys = { left: false, right: false };
 
-    // 【修正】敵の射撃間隔を大幅短縮 + 障害物増加
     const settings = {
         easy:   { speed: 0.18, max: 0.45, obstRate: 40,  itemRate: 100, coinRate: 70, accel: 0.0001, multiSpawn: 0.2, enemyShootInterval: 0 },
         normal: { speed: 0.28, max: 0.70, obstRate: 28,  itemRate: 180, coinRate: 100, accel: 0.0005, multiSpawn: 0.4, enemyShootInterval: 0 },
-        hard:   { speed: 0.38, max: 0.95, obstRate: 18,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.5, enemyShootInterval: 25 },  // 25フレーム（0.4秒）に短縮
-        expert: { speed: 0.50, max: 1.4,  obstRate: 12,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.65, enemyShootInterval: 15 }  // 15フレーム（0.25秒）
+        hard:   { speed: 0.38, max: 0.95, obstRate: 18,  itemRate: 250, coinRate: 130, accel: 0.0008, multiSpawn: 0.5, enemyShootInterval: 25 },
+        expert: { speed: 0.50, max: 1.4,  obstRate: 12,  itemRate: 350, coinRate: 180, accel: 0.0012, multiSpawn: 0.65, enemyShootInterval: 15 }
     };
 
     function init() {
@@ -391,12 +390,10 @@
         document.getElementById('cooldown-container').classList.add('hidden');
     }
 
-    // 【修正】レーンを5本に + たまにレーン外にも出現
     function spawnObstacle() {
         const cfg = settings[difficulty];
         const numObstacles = Math.random() < cfg.multiSpawn ? (Math.random() < 0.4 ? 3 : 2) : 1;
         
-        // 5レーン + たまにランダム位置
         const lanes = [-3, -1.5, 0, 1.5, 3];
         const usedLanes = [];
 
@@ -408,15 +405,14 @@
             else { w=1.5; h=0.6; }
 
             const geo = new THREE.BoxGeometry(w,h,w);
-            const canShoot = (cfg.enemyShootInterval > 0) && (Math.random() > 0.3); // 70%が赤
+            const canShoot = (cfg.enemyShootInterval > 0) && (Math.random() > 0.3);
             const color = canShoot ? 0xff0055 : 0xffaa00;
             const mat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: color, emissiveIntensity: 0.8 });
             const obs = new THREE.Mesh(geo, mat);
             
             let lane;
-            // 20%の確率でレーン外（ランダム位置）
             if (Math.random() < 0.2) {
-                lane = (Math.random() - 0.5) * 6; // -3 ~ 3 のランダム
+                lane = (Math.random() - 0.5) * 6;
             } else {
                 const remaining = lanes.filter(l => !usedLanes.includes(l));
                 if (remaining.length > 0) {
@@ -434,7 +430,7 @@
                 passed: false, 
                 canShoot: canShoot, 
                 shootTimer: 0,
-                hasShot: false // 初回射撃フラグ
+                hasShot: false
             };
             obs.castShadow = true;
             scene.add(obs);
@@ -496,6 +492,7 @@
         shootCooldown = SHOOT_COOLDOWN_MAX;
     }
 
+    // 【修正】敵の弾：直線的に飛ぶだけ（ホーミングなし）
     function enemyShoot(fromPos) {
         const geo = new THREE.SphereGeometry(0.15, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ 
@@ -504,9 +501,15 @@
         const bullet = new THREE.Mesh(geo, mat);
         bullet.position.copy(fromPos);
         
-        const direction = new THREE.Vector3();
-        direction.subVectors(player.position, fromPos).normalize();
-        bullet.userData = { vx: direction.x * 0.5, vy: direction.y * 0.5, vz: direction.z * 0.5 };
+        // プレイヤーの大まかな方向（X軸のみ）+ ランダムなブレ
+        const targetX = player.position.x - fromPos.x;
+        const spread = (Math.random() - 0.5) * 0.6; // ±30%のブレ
+        
+        bullet.userData = { 
+            vx: targetX * 0.15 + spread,  // X方向は緩やか + ブレ
+            vy: 0,                          // Y方向は変化なし
+            vz: 0.6                         // Z方向は前方へ一定速度（直進）
+        };
         
         const light = new THREE.PointLight(0xff00ff, 0.6, 4);
         bullet.add(light);
@@ -657,7 +660,7 @@
             player.rotation.z *= 0.9;
         }
         player.position.x += velocityX;
-        player.position.x = Math.max(-3.2, Math.min(3.2, player.position.x)); // 移動範囲調整
+        player.position.x = Math.max(-3.2, Math.min(3.2, player.position.x));
 
         velocityY -= GRAVITY;
         player.position.y += velocityY;
@@ -680,16 +683,13 @@
         updateBullets();
         updateParticles();
 
-        // 【修正】敵の射撃ロジック：確実に動作
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const obs = obstacles[i];
             obs.position.z += effectiveSpeed;
             obs.rotation.y += 0.02;
 
-            // 敵の射撃（確実に発射）
             if (obs.userData.canShoot && cfg.enemyShootInterval > 0) {
                 obs.userData.shootTimer++;
-                // 画面内に入ったらすぐ撃つ + その後も定期的に撃つ
                 if (obs.position.z > -50 && obs.position.z < 5) {
                     if (!obs.userData.hasShot || obs.userData.shootTimer >= cfg.enemyShootInterval) {
                         enemyShoot(obs.position);
@@ -950,6 +950,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
